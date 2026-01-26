@@ -8,10 +8,11 @@
     
     <style>
         :root {
-            --primary: #2563eb;   /* Blue */
-            --danger: #ef4444;    /* Red */
-            --warning: #f59e0b;   /* Orange */
-            --success: #22c55e;   /* Green */
+            --primary: #2563eb;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #22c55e;
+            --offline: #4b5563; /* Grey for offline */
             --bg: #f3f4f6;
             --card: #ffffff;
             --text: #1f2937;
@@ -68,8 +69,10 @@
             transition: all 0.3s ease;
         }
 
+        /* Status Colors */
         .status-free { background: var(--success); box-shadow: 0 0 30px rgba(34, 197, 94, 0.4); }
         .status-busy { background: var(--danger); box-shadow: 0 0 30px rgba(239, 68, 68, 0.4); animation: pulse 2s infinite; }
+        .status-offline { background: var(--offline); box-shadow: none; opacity: 0.8; }
         .status-loading { background: #9ca3af; }
 
         @keyframes pulse {
@@ -80,6 +83,7 @@
 
         .status-text { font-size: 1.5rem; font-weight: 700; margin-bottom: 5px; }
         .sub-text { color: #6b7280; font-size: 0.9rem; }
+        #heartbeat-debug { font-size: 0.7rem; color: #9ca3af; margin-top: 10px; }
 
         /* --- ADMIN PANEL --- */
         #admin-panel {
@@ -95,31 +99,14 @@
             box-sizing: border-box;
         }
 
-        .admin-header {
-            font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;
-        }
-
-        /* Input Styling */
-        input {
-            width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;
-        }
-
-        /* Button Layouts */
-        .grid-buttons {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;
-        }
-        
-        /* Specific layout for Delete ID */
-        .delete-group {
-            display: flex; gap: 5px; margin-bottom: 10px;
-        }
-        .delete-group input { margin-bottom: 0; width: 30%; } /* Small input for ID */
+        .admin-header { font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .grid-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .delete-group { display: flex; gap: 5px; margin-bottom: 10px; }
+        .delete-group input { margin-bottom: 0; width: 30%; }
         .delete-group button { width: 70%; }
 
-        button {
-            padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white;
-            font-size: 0.9rem; transition: transform 0.1s;
-        }
+        button { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; transition: transform 0.1s; }
         button:active { transform: scale(0.98); }
 
         .btn-blue { background-color: var(--primary); }
@@ -127,10 +114,7 @@
         .btn-orange { background-color: var(--warning); color: black; }
         .btn-red { background-color: var(--danger); }
 
-        #console-log {
-            margin-top: 15px; background: #1e1e1e; color: #00ff00; padding: 10px; 
-            border-radius: 5px; font-family: monospace; font-size: 0.8rem; min-height: 40px;
-        }
+        #console-log { margin-top: 15px; background: #1e1e1e; color: #00ff00; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 0.8rem; min-height: 40px; }
 
     </style>
 </head>
@@ -144,28 +128,23 @@
     <div class="status-container">
         <div id="status-indicator" class="status-circle status-loading">...</div>
         <div class="status-text" id="status-label">Connecting...</div>
-        <div class="sub-text">Live Status</div>
+        <div class="sub-text" id="status-sub">Live Status</div>
+        <div id="heartbeat-debug">Waiting for signal...</div>
     </div>
 
     <div id="admin-panel">
         <div class="admin-header">Admin Controls</div>
-        
         <input type="password" id="adminKey" placeholder="Enter Admin Key">
-        
         <div class="grid-buttons">
             <button class="btn-green" onclick="runCmd('status change')">Toggle Status</button>
-            <button class="btn-blue" onclick="runCmd('enroll')">Enroll New Finger</button>
+            <button class="btn-blue" onclick="runCmd('enroll')">Enroll Finger</button>
         </div>
-
-        <button class="btn-orange" style="width:100%; margin-bottom: 10px;" onclick="runCmd('check count')">Check Fingerprint Count</button>
-
+        <button class="btn-orange" style="width:100%; margin-bottom: 10px;" onclick="runCmd('check count')">Check Count</button>
         <div class="delete-group">
             <input type="number" id="deleteIdInput" placeholder="ID#">
             <button class="btn-red" onclick="deleteSpecificId()">Delete ID</button>
         </div>
-
-        <button class="btn-red" style="width:100%; opacity: 0.8;" onclick="runCmd('delete all')">⚠️ Delete All Database</button>
-
+        <button class="btn-red" style="width:100%; opacity: 0.8;" onclick="runCmd('delete all')">⚠️ Delete All DB</button>
         <div id="console-log">> System Ready.</div>
     </div>
 
@@ -173,78 +152,129 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
         import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-database.js";
 
- const firebaseConfig = {
-  apiKey: "AIzaSyA5n1NakeoTaYTbKPcdL75JLQ9LXhmVO3c",
-  authDomain: "occupancy-manager-428e6.firebaseapp.com",
-  databaseURL: "https://occupancy-manager-428e6-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "occupancy-manager-428e6",
-  storageBucket: "occupancy-manager-428e6.firebasestorage.app",
-  messagingSenderId: "1066831141451",
-  appId: "1:1066831141451:web:88b52e6d6d4d9641f4cbce",
-  measurementId: "G-MZR22V5V6V"
-};
+        // -----------------------------------------------------------
+        // PASTE FIREBASE CONFIG HERE
+        // -----------------------------------------------------------
+        const firebaseConfig = {
+            apiKey: "PASTE_HERE",
+            authDomain: "PASTE_HERE",
+            databaseURL: "PASTE_HERE",
+            projectId: "PASTE_HERE",
+            storageBucket: "PASTE_HERE",
+            messagingSenderId: "PASTE_HERE",
+            appId: "PASTE_HERE"
+        };
+        // -----------------------------------------------------------
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // --- PUBLIC STATUS LOGIC ---
+        // UI Elements
         const circle = document.getElementById("status-indicator");
         const label = document.getElementById("status-label");
+        const subText = document.getElementById("status-sub");
+        const debugText = document.getElementById("heartbeat-debug");
+        const logBox = document.getElementById("console-log");
 
-        onValue(ref(db, 'roomStatus'), (snapshot) => {
-            const status = snapshot.val() || "UNKNOWN";
-            circle.classList.remove("status-free", "status-busy", "status-loading");
+        // Logic Variables
+        let lastHeartbeatTime = 0; // Starts at 0
+        let isOffline = true;
+        let currentRoomStatus = "UNKNOWN";
+
+        // 1. LISTEN FOR HEARTBEAT (The "Pulse")
+        onValue(ref(db, 'heartbeat'), (snapshot) => {
+            // Whenever DB changes, this runs
+            lastHeartbeatTime = Date.now(); // Update local time
+            isOffline = false; // System is alive
             
-            if (status === "FREE") {
+            // Debug text
+            debugText.innerText = "Signal received just now";
+            
+            updateDisplay(); 
+        });
+
+        // 2. LISTEN FOR ROOM STATUS
+        onValue(ref(db, 'roomStatus'), (snapshot) => {
+            currentRoomStatus = snapshot.val() || "UNKNOWN";
+            updateDisplay();
+        });
+
+        // 3. LISTEN FOR ADMIN LOGS
+        onValue(ref(db, 'admin/result'), (snapshot) => {
+            if(snapshot.val()) logBox.innerText = "> ESP32: " + snapshot.val();
+        });
+
+        // 4. WATCHDOG TIMER (Checks every 1 second)
+        setInterval(() => {
+            const now = Date.now();
+            const diff = now - lastHeartbeatTime;
+
+            // Update debug text
+            if (lastHeartbeatTime > 0) {
+                const secondsAgo = Math.floor(diff / 1000);
+                debugText.innerText = "Last signal: " + secondsAgo + "s ago";
+            }
+
+            // If no signal for 10 seconds (10000ms), mark OFFLINE
+            if (diff > 10000) {
+                if (!isOffline) {
+                    isOffline = true;
+                    updateDisplay();
+                }
+            }
+        }, 1000);
+
+        // 5. MASTER DISPLAY FUNCTION
+        function updateDisplay() {
+            // Reset styles
+            circle.className = "status-circle"; 
+            circle.style.backgroundColor = ""; // Clear inline styles
+            circle.style.boxShadow = ""; 
+
+            if (isOffline) {
+                circle.classList.add("status-offline");
+                circle.innerText = "OFF";
+                label.innerText = "System Offline";
+                subText.innerText = "Check Power / WiFi";
+            } 
+            else if (currentRoomStatus === "FREE") {
                 circle.classList.add("status-free");
                 circle.innerText = "FREE";
                 label.innerText = "Room is Available";
-            } else if (status === "BUSY") {
+                subText.innerText = "Live Status";
+            } 
+            else if (currentRoomStatus === "BUSY") {
                 circle.classList.add("status-busy");
                 circle.innerText = "BUSY";
                 label.innerText = "Do Not Disturb";
-            } else {
+                subText.innerText = "Live Status";
+            } 
+            else {
                 circle.classList.add("status-loading");
                 circle.innerText = "?";
                 label.innerText = "Connecting...";
             }
-        });
+        }
 
-        // --- ADMIN FEEDBACK LOGIC ---
-        const logBox = document.getElementById("console-log");
-        onValue(ref(db, 'admin/result'), (snapshot) => {
-            if(snapshot.val()) {
-                logBox.innerText = "> ESP32: " + snapshot.val();
-            }
-        });
-
-        // --- COMMAND SENDING LOGIC ---
+        // --- ADMIN COMMANDS ---
         window.runCmd = function(commandName) {
             const key = document.getElementById("adminKey").value;
-            if (!key) { alert("Please enter the Admin Key!"); return; }
-            
+            if (!key) { alert("Please enter Admin Key!"); return; }
             logBox.innerText = "> Sending: " + commandName + "...";
             set(ref(db, 'admin/cmd'), commandName);
             set(ref(db, 'admin/key'), key);
         }
 
-        // --- SPECIAL LOGIC FOR DELETING ID ---
         window.deleteSpecificId = function() {
             const key = document.getElementById("adminKey").value;
             const idToDelete = document.getElementById("deleteIdInput").value;
-
-            if (!key) { alert("Please enter the Admin Key!"); return; }
-            if (!idToDelete) { alert("Please enter an ID number to delete!"); return; }
-
-            // Creates command string like: "delete id 5"
-            const fullCommand = "delete id " + idToDelete;
-            
-            logBox.innerText = "> Sending: " + fullCommand + "...";
-            set(ref(db, 'admin/cmd'), fullCommand);
+            if (!key) { alert("Please enter Admin Key!"); return; }
+            if (!idToDelete) { alert("Enter ID!"); return; }
+            logBox.innerText = "> Deleting ID " + idToDelete + "...";
+            set(ref(db, 'admin/cmd'), "delete id " + idToDelete);
             set(ref(db, 'admin/key'), key);
         }
 
-        // --- TOGGLE ADMIN PANEL ---
         window.toggleAdmin = function() {
             const panel = document.getElementById("admin-panel");
             const btn = document.getElementById("admin-toggle");
@@ -256,72 +286,7 @@
                 btn.innerText = "🔓"; 
                 document.getElementById("adminKey").focus();
             }
-
-            // --- 1. HANDLE STATUS & OFFLINE DETECTION ---
-        const circle = document.getElementById("status-indicator");
-        const label = document.getElementById("status-label");
-        
-        let lastHeartbeatTime = Date.now();
-        let serverHeartbeatVal = 0;
-        let isOffline = true;
-
-        // A. Listen for the Heartbeat from ESP32
-        onValue(ref(db, 'heartbeat'), (snapshot) => {
-            serverHeartbeatVal = snapshot.val();
-            lastHeartbeatTime = Date.now(); // We just got a signal!
-            isOffline = false; // System is alive
-            updateDisplay(); // Refresh UI
-        });
-
-        // B. Listen for the Status (Busy/Free)
-        let currentStatus = "UNKNOWN";
-        onValue(ref(db, 'roomStatus'), (snapshot) => {
-            currentStatus = snapshot.val();
-            updateDisplay();
-        });
-
-        // C. The Watchdog Timer (Checks constantly if system died)
-        setInterval(() => {
-            // If we haven't heard from ESP32 in 10 seconds (10000ms)
-            if (Date.now() - lastHeartbeatTime > 10000) {
-                if (!isOffline) {
-                    isOffline = true;
-                    updateDisplay();
-                }
-            }
-        }, 1000); // Check every 1 second
-
-        // D. The Master Display Function
-        function updateDisplay() {
-            // Remove old classes
-            circle.classList.remove("status-free", "status-busy", "status-loading");
-            
-            if (isOffline) {
-                circle.classList.add("status-loading"); // Grey color
-                circle.innerText = "OFF";
-                label.innerText = "System Offline";
-                circle.style.backgroundColor = "#4b5563"; // Dark Grey
-                circle.style.boxShadow = "none";
-            } 
-            else if (currentStatus === "FREE") {
-                circle.classList.add("status-free");
-                circle.innerText = "FREE";
-                label.innerText = "Room is Available";
-            } 
-            else if (currentStatus === "BUSY") {
-                circle.classList.add("status-busy");
-                circle.innerText = "BUSY";
-                label.innerText = "Do Not Disturb";
-            } 
-            else {
-                circle.classList.add("status-loading");
-                circle.innerText = "?";
-                label.innerText = "Connecting...";
-            }
-        }
-            
         }
     </script>
 </body>
 </html>
-
