@@ -217,7 +217,7 @@
             }
 
             // If no signal for 10 seconds (10000ms), mark OFFLINE
-            if (diff > 10000) {
+            if (diff > 25000) {
                 if (!isOffline) {
                     isOffline = true;
                     updateDisplay();
@@ -291,4 +291,5 @@
     </script>
 </body>
 </html>
+
 
