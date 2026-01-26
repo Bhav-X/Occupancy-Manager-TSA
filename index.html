@@ -256,7 +256,72 @@
                 btn.innerText = "🔓"; 
                 document.getElementById("adminKey").focus();
             }
+
+            // --- 1. HANDLE STATUS & OFFLINE DETECTION ---
+        const circle = document.getElementById("status-indicator");
+        const label = document.getElementById("status-label");
+        
+        let lastHeartbeatTime = Date.now();
+        let serverHeartbeatVal = 0;
+        let isOffline = true;
+
+        // A. Listen for the Heartbeat from ESP32
+        onValue(ref(db, 'heartbeat'), (snapshot) => {
+            serverHeartbeatVal = snapshot.val();
+            lastHeartbeatTime = Date.now(); // We just got a signal!
+            isOffline = false; // System is alive
+            updateDisplay(); // Refresh UI
+        });
+
+        // B. Listen for the Status (Busy/Free)
+        let currentStatus = "UNKNOWN";
+        onValue(ref(db, 'roomStatus'), (snapshot) => {
+            currentStatus = snapshot.val();
+            updateDisplay();
+        });
+
+        // C. The Watchdog Timer (Checks constantly if system died)
+        setInterval(() => {
+            // If we haven't heard from ESP32 in 10 seconds (10000ms)
+            if (Date.now() - lastHeartbeatTime > 10000) {
+                if (!isOffline) {
+                    isOffline = true;
+                    updateDisplay();
+                }
+            }
+        }, 1000); // Check every 1 second
+
+        // D. The Master Display Function
+        function updateDisplay() {
+            // Remove old classes
+            circle.classList.remove("status-free", "status-busy", "status-loading");
+            
+            if (isOffline) {
+                circle.classList.add("status-loading"); // Grey color
+                circle.innerText = "OFF";
+                label.innerText = "System Offline";
+                circle.style.backgroundColor = "#4b5563"; // Dark Grey
+                circle.style.boxShadow = "none";
+            } 
+            else if (currentStatus === "FREE") {
+                circle.classList.add("status-free");
+                circle.innerText = "FREE";
+                label.innerText = "Room is Available";
+            } 
+            else if (currentStatus === "BUSY") {
+                circle.classList.add("status-busy");
+                circle.innerText = "BUSY";
+                label.innerText = "Do Not Disturb";
+            } 
+            else {
+                circle.classList.add("status-loading");
+                circle.innerText = "?";
+                label.innerText = "Connecting...";
+            }
+        }
+            
         }
     </script>
 </body>
 </html>
+
