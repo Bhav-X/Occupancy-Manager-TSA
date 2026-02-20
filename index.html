@@ -258,22 +258,58 @@
         }
 
         // --- ADMIN COMMANDS ---
+        let cmdTimeout; // Variable to hold our timeout timer
+
         window.runCmd = function(commandName) {
-            const key = document.getElementById("adminKey").value;
+            const keyInput = document.getElementById("adminKey");
+            const key = keyInput.value;
+            
             if (!key) { alert("Please enter Admin Key!"); return; }
+            
             logBox.innerText = "> Sending: " + commandName + "...";
+            
+            // Send to database
             set(ref(db, 'admin/cmd'), commandName);
             set(ref(db, 'admin/key'), key);
+
+            // Auto-clear the password box so it doesn't just sit there
+            keyInput.value = "";
+
+            // ADDED: 5-Second Anti-Hang Timeout
+            clearTimeout(cmdTimeout);
+            cmdTimeout = setTimeout(() => {
+                if (logBox.innerText.includes("Sending")) {
+                    logBox.innerText = "> ERROR: No response from system. Check Admin Key or Power.";
+                    // Reset command in database so it doesn't get stuck
+                    set(ref(db, 'admin/cmd'), "0"); 
+                }
+            }, 2500); // 5000 milliseconds = 5 seconds
         }
 
         window.deleteSpecificId = function() {
-            const key = document.getElementById("adminKey").value;
+            const keyInput = document.getElementById("adminKey");
+            const key = keyInput.value;
             const idToDelete = document.getElementById("deleteIdInput").value;
+            
             if (!key) { alert("Please enter Admin Key!"); return; }
             if (!idToDelete) { alert("Enter ID!"); return; }
+            
             logBox.innerText = "> Deleting ID " + idToDelete + "...";
+            
             set(ref(db, 'admin/cmd'), "delete id " + idToDelete);
             set(ref(db, 'admin/key'), key);
+
+            keyInput.value = ""; // Auto-clear
+            document.getElementById("deleteIdInput").value = ""; // Auto-clear ID box
+
+            // ADDED: 5-Second Anti-Hang Timeout
+            clearTimeout(cmdTimeout);
+            cmdTimeout = setTimeout(() => {
+                if (logBox.innerText.includes("Deleting")) {
+                    logBox.innerText = "> ERROR: No response from system. Check Admin Key or Power.";
+                    set(ref(db, 'admin/cmd'), "0");
+                }
+            }, 5000);
         }
 
         window.toggleAdmin = function() {
@@ -288,9 +324,11 @@
                 document.getElementById("adminKey").focus();
             }
         }
+            
     </script>
 </body>
 </html>
+
 
 
 
