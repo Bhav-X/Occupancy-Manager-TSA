@@ -1,221 +1,115 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Room Monitor</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #2563eb;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --success: #22c55e;
-            --offline: #4b5563;
-            --bg: #f3f4f6;
-            --card: #ffffff;
-            --text: #1f2937;
+<script>
+    // --- CONFIGURATION ---
+    const RENDER_URL = "https://occupancy-wall.onrender.com"; 
+    const READ_TOKEN = "occupancy_Manager@1153";
+
+    // UI Elements (Using your exact IDs)
+    const circle = document.getElementById("status-indicator");
+    const label = document.getElementById("status-label");
+    const debugText = document.getElementById("heartbeat-debug");
+    const logBox = document.getElementById("console-log");
+
+    // --- 1. THE WATCHER (Keeps your UI live) ---
+    setInterval(async () => {
+        try {
+            const response = await fetch(`${RENDER_URL}/api/status`, {
+                headers: { "Authorization": `Bearer ${READ_TOKEN}` }
+            });
+            const data = await response.json();
+
+            // Update Room Status (FREE/BUSY)
+            const currentRoomStatus = data.roomStatus || "UNKNOWN";
+            updateDisplay(currentRoomStatus);
+            
+            // Update Heartbeat
+            if (data.admin?.heartbeat) {
+                const secondsAgo = Math.floor((Date.now() - data.admin.heartbeat) / 1000);
+                debugText.innerText = (secondsAgo > 30) ? "Scanner Offline" : `Last signal: ${secondsAgo}s ago`;
+            }
+
+            // Update Console Log from ESP32
+            if (data.admin?.result) {
+                logBox.innerText = "> ESP32: " + data.admin.result;
+            }
+
+        } catch (err) {
+            console.error("Connection Error");
         }
+    }, 2000);
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg);
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            color: var(--text);
-        }
+    // --- 2. THE CORE FUNCTIONS (What you actually asked for) ---
 
-        header {
-            width: 100%;
-            background: var(--card);
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-sizing: border-box;
-        }
+    // Generic function to send commands (Enroll, Toggle, Check Count)
+    async function runCmd(commandString) {
+        const key = document.getElementById("adminKey").value;
+        if (!key) return alert("Enter Admin Key!");
 
-        .status-container {
-            margin-top: 40px;
-            text-align: center;
-            width: 90%;
-            max-width: 400px;
-        }
+        logBox.innerText = "> Sending: " + commandString;
 
-        .status-circle {
-            width: 200px;
-            height: 200px;
-            border-radius: 50%;
-            margin: 0 auto 20px auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            font-weight: bold;
-            color: white;
-            transition: all 0.3s ease;
-        }
+        await fetch(`${RENDER_URL}/api/command`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                cmd: commandString.toUpperCase(), // e.g., "ENROLL", "STATUS_CHANGE"
+                key: key 
+            })
+        });
 
-        .status-free { background: var(--success); box-shadow: 0 0 30px rgba(34, 197, 94, 0.4); }
-        .status-busy { background: var(--danger); box-shadow: 0 0 30px rgba(239, 68, 68, 0.4); animation: pulse 2s infinite; }
-        .status-offline { background: var(--offline); opacity: 0.8; }
+        // Auto-reset command to "0" after 5 seconds so it doesn't loop
+        setTimeout(() => resetCommand(), 5000);
+    }
 
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-
-        #admin-panel {
-            display: none;
-            background: var(--card);
-            width: 90%;
-            max-width: 400px;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-top: 30px;
-            margin-bottom: 50px;
-        }
-
-        .grid-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-        input, button { padding: 12px; border-radius: 8px; border: 1px solid #ddd; width: 100%; box-sizing: border-box; }
-        button { border: none; color: white; font-weight: bold; cursor: pointer; }
-        .btn-blue { background: var(--primary); }
-        .btn-red { background: var(--danger); }
-        .btn-green { background: var(--success); }
-        .btn-orange { background: var(--warning); color: black; }
-        #console-log { margin-top: 15px; background: #1e1e1e; color: #00ff00; padding: 10px; font-family: monospace; border-radius: 5px; }
-    </style>
-</head>
-<body>
-
-    <header>
-        <h1>Smart Room Monitor</h1>
-        <button id="admin-toggle" style="background:none; color:black; width:auto; font-size:1.5rem;" onclick="toggleAdmin()">🔒</button>
-    </header>
-
-    <div class="status-container">
-        <div id="status-indicator" class="status-circle status-offline">...</div>
-        <div class="status-text" id="status-label" style="font-size:1.5rem; font-weight:700;">Connecting...</div>
-        <div class="sub-text" id="status-sub" style="color:#6b7280;">Live Status</div>
-        <div id="heartbeat-debug" style="font-size:0.7rem; color:#9ca3af; margin-top:10px;">Waiting for signal...</div>
-    </div>
-
-    <div id="admin-panel">
-        <div style="font-weight:bold; margin-bottom:15px;">Admin Controls</div>
-        <input type="password" id="adminKey" placeholder="Enter Admin Key" style="margin-bottom:10px;">
+    // Specific function for "Delete ID" since it needs a number
+    async function deleteSpecificId() {
+        const key = document.getElementById("adminKey").value;
+        const idNum = document.getElementById("deleteIdInput").value;
         
-        <div class="grid-buttons">
-            <button class="btn-blue" onclick="runCmd('ENROLL')">Enroll Finger</button>
-            <button class="btn-red" onclick="runCmd('DELETE_ALL')">Delete All</button>
-        </div>
+        if (!key || !idNum) return alert("Enter Key and ID#!");
 
-        <div style="font-weight:bold; margin:15px 0 10px 0;">System Maintenance</div>
-        <div class="grid-buttons">
-            <button class="btn-red" onclick="toggleMaintenance(true)">Stop System</button>
-            <button class="btn-green" onclick="toggleMaintenance(false)">Start System</button>
-        </div>
+        logBox.innerText = `> Sending: DELETE ID ${idNum}`;
 
-        <div id="console-log">> System Ready.</div>
-    </div>
+        await fetch(`${RENDER_URL}/api/command`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                cmd: "DELETE_ID", 
+                id: idNum, 
+                key: key 
+            })
+        });
 
-    <script>
-        // --- CONFIGURATION ---
-        const RENDER_URL = "https://occupancy-wall.onrender.com"; 
-        const READ_TOKEN = "occupancy_Manager@1153";
+        setTimeout(() => resetCommand(), 5000);
+    }
 
-        const circle = document.getElementById("status-indicator");
-        const label = document.getElementById("status-label");
-        const subText = document.getElementById("status-sub");
-        const debugText = document.getElementById("heartbeat-debug");
-        const logBox = document.getElementById("console-log");
+    // Reset helper
+    async function resetCommand() {
+        await fetch(`${RENDER_URL}/api/command`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ cmd: "0", key: "0" })
+        });
+    }
 
-        let lastHeartbeatTime = 0;
-        let isOffline = true;
-        let currentRoomStatus = "UNKNOWN";
-        let maintenanceActive = false;
+    // --- 3. UI DISPLAY ENGINE ---
+    function updateDisplay(status) {
+        circle.className = "status-circle"; // Reset
+        circle.innerText = status;
 
-        // 1. DATA WATCHER
-        setInterval(async () => {
-            try {
-                const response = await fetch(`${RENDER_URL}/api/status`, {
-                    headers: { "Authorization": `Bearer ${READ_TOKEN}` }
-                });
-                const data = await response.json();
-
-                currentRoomStatus = data.roomStatus || "UNKNOWN";
-                maintenanceActive = data.admin?.maintenance || false;
-                
-                if (data.admin?.heartbeat) {
-                    lastHeartbeatTime = data.admin.heartbeat;
-                    const secondsAgo = Math.floor((Date.now() - lastHeartbeatTime) / 1000);
-                    isOffline = (secondsAgo > 30);
-                    debugText.innerText = isOffline ? "Signal Lost" : `Last signal: ${secondsAgo}s ago`;
-                }
-
-                if (data.admin?.result) { logBox.innerText = "> ESP32: " + data.admin.result; }
-
-                updateDisplay();
-            } catch (err) {
-                isOffline = true;
-                updateDisplay();
-            }
-        }, 2000);
-
-        // 2. COMMANDS
-        async function runCmd(command) {
-            const key = document.getElementById("adminKey").value;
-            if (!key) return alert("Enter Admin Key!");
-            logBox.innerText = "> Sending: " + command;
-            await fetch(`${RENDER_URL}/api/command`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ cmd: command, key: key })
-            });
+        if (status === "FREE") {
+            circle.classList.add("status-free");
+            label.innerText = "Room is Available";
+        } else if (status === "BUSY") {
+            circle.classList.add("status-busy");
+            label.innerText = "Do Not Disturb";
+        } else {
+            circle.classList.add("status-offline");
+            circle.innerText = "OFF";
+            label.innerText = "System Offline";
         }
+    }
 
-        // 3. MAINTENANCE
-        async function toggleMaintenance(state) {
-            await fetch(`${RENDER_URL}/api/command`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ maintenance: state })
-            });
-            logBox.innerText = state ? "> System Entering Maintenance..." : "> System Resuming...";
-        }
-
-        // 4. UI UPDATE
-        function updateDisplay() {
-            circle.className = "status-circle";
-            if (maintenanceActive) {
-                circle.classList.add("status-offline");
-                circle.innerText = "DORM";
-                label.innerText = "Maintenance Mode";
-                subText.innerText = "System is suspended";
-            } else if (isOffline) {
-                circle.classList.add("status-offline");
-                circle.innerText = "OFF";
-                label.innerText = "Scanner Offline";
-            } else if (currentRoomStatus === "FREE") {
-                circle.classList.add("status-free");
-                circle.innerText = "FREE";
-                label.innerText = "Room Available";
-            } else if (currentRoomStatus === "BUSY") {
-                circle.classList.add("status-busy");
-                circle.innerText = "BUSY";
-                label.innerText = "Room Occupied";
-            }
-        }
-
-        function toggleAdmin() {
-            const panel = document.getElementById("admin-panel");
-            panel.style.display = (panel.style.display === "block") ? "none" : "block";
-        }
-    </script>
-</body>
-</html>
+    function toggleAdmin() {
+        const panel = document.getElementById("admin-panel");
+        panel.style.display = (panel.style.display === "block") ? "none" : "block";
+    }
+</script>
