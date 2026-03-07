@@ -28,7 +28,6 @@
             color: var(--text);
         }
 
-        /* --- HEADER --- */
         header {
             width: 100%;
             background: var(--card);
@@ -40,12 +39,11 @@
             box-sizing: border-box;
         }
         h1 { margin: 0; font-size: 1.2rem; }
-        
+
         #admin-toggle {
             background: none; border: none; font-size: 1.5rem; cursor: pointer; opacity: 0.5;
         }
 
-        /* --- PUBLIC STATUS CARD --- */
         .status-container {
             margin-top: 40px;
             text-align: center;
@@ -68,6 +66,7 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
             transition: background 0.3s ease, box-shadow 0.3s ease;
             gap: 6px;
+            cursor: default;
         }
 
         .status-free    { background: var(--success); box-shadow: 0 0 30px rgba(34, 197, 94, 0.4); }
@@ -81,7 +80,6 @@
             100% { transform: scale(1); }
         }
 
-        /* Timer shown inside circle when BUSY */
         #busy-timer {
             font-size: 0.85rem;
             font-weight: 400;
@@ -94,7 +92,6 @@
         .sub-text    { color: #6b7280; font-size: 0.9rem; }
         #heartbeat-debug { font-size: 0.7rem; color: #9ca3af; margin-top: 10px; }
 
-        /* --- SYSTEM NOTICE BANNER --- */
         #system-notice {
             display: none;
             background: #fff7ed;
@@ -107,19 +104,9 @@
             box-sizing: border-box;
             text-align: center;
         }
-        #system-notice .notice-title {
-            font-weight: 700;
-            font-size: 0.95rem;
-            color: #9a3412;
-            margin-bottom: 6px;
-        }
-        #system-notice .notice-body {
-            font-size: 0.82rem;
-            color: #7c2d12;
-            line-height: 1.5;
-        }
+        #system-notice .notice-title { font-weight: 700; font-size: 0.95rem; color: #9a3412; margin-bottom: 6px; }
+        #system-notice .notice-body  { font-size: 0.82rem; color: #7c2d12; line-height: 1.5; }
 
-        /* --- ADMIN PANEL --- */
         #admin-panel {
             display: none;
             background: var(--card);
@@ -195,22 +182,22 @@
     <div id="admin-panel">
         <div class="admin-header">Admin Controls</div>
         <input type="password" id="adminKey" placeholder="Enter Admin Key">
-        
+
         <div class="grid-buttons">
             <button class="btn-green" onclick="runCmd('STATUS_CHANGE')">Toggle Status</button>
             <button class="btn-blue"  onclick="runCmd('ENROLL')">Enroll Finger</button>
         </div>
-        
+
         <button class="btn-orange" style="width:100%; margin-bottom: 10px;" onclick="runCmd('CHECK_COUNT')">Check Count</button>
-        
+
         <div class="delete-group">
             <input type="number" id="deleteIdInput" placeholder="ID#" min="1">
             <button class="btn-red" onclick="deleteSpecificId()">Delete ID</button>
         </div>
-        
-        <button class="btn-red"  style="width:100%; margin-bottom: 10px; opacity: 0.8;" onclick="runCmd('DELETE_ALL')">⚠️ Delete All DB</button>
+
+        <button class="btn-red"  style="width:100%; margin-bottom: 10px; opacity: 0.8;" onclick="confirmDeleteAll()">⚠️ Delete All DB</button>
         <button class="btn-grey" style="width:100%; margin-bottom: 10px;" onclick="runCmd('REBOOT')">🔄 Reboot Device</button>
-        
+
         <div id="console-log">> System Ready.</div>
     </div>
 
@@ -233,26 +220,25 @@
         // 🌐 Your Render server URL (no trailing slash)
         const RENDER_URL = "https://occupancy-wall.onrender.com";
 
-        // 🔑 Read token — must match READ_TOKEN in your Render environment variables
-        const READ_TOKEN = "occupancy_Manager@1153";
-
         // 🏷️ What this room is called (shown on the page to visitors)
         const ROOM_NAME = "Smart Room Monitor";
 
         // ⏱️ How many seconds without a heartbeat before scanner is considered offline
-        const OFFLINE_THRESHOLD_SECONDS = 15;
+        const OFFLINE_THRESHOLD_SECONDS = 30;
 
         // ============================================================
         //  END OF CONFIG — do not edit below unless you know what
         //  you are doing.
         // ============================================================
 
+        // NOTE: READ_TOKEN has been removed from the frontend entirely.
+        // The website now uses /api/public-status for room status (no token needed).
+        // The admin result polling uses /api/result which requires the admin key
+        // entered by the user at runtime — never stored in this file.
 
-        // Apply room name from config
         document.title = ROOM_NAME;
         document.querySelector("h1").innerText = ROOM_NAME;
 
-        // UI Elements
         const circle     = document.getElementById("status-indicator");
         const statusWord = document.getElementById("status-word");
         const busyTimer  = document.getElementById("busy-timer");
@@ -265,20 +251,17 @@
         let lastKnownResult = "";
         let isWaiting       = false;
         let offlineStreak   = 0;
+        let busyStartTime   = null;
+        let timerInterval   = null;
+        let lastKnownStatus = null;
 
-        // Timer state — tracks when room became BUSY
-        let busyStartTime    = null;    // timestamp when BUSY started
-        let timerInterval    = null;    // setInterval handle for the clock
-        let lastKnownStatus  = null;    // tracks status changes
-
-        // --- THE WATCHER (polls Render every 2 seconds) ---
+        // --- PUBLIC WATCHER (no token — uses /api/public-status) ---
+        // This means READ_TOKEN is never in the frontend JS
         setInterval(async () => {
             try {
-                const response = await fetch(`${RENDER_URL}/api/status`, {
-                    headers: { "Authorization": `Bearer ${READ_TOKEN}` }
-                });
+                const response = await fetch(`${RENDER_URL}/api/public-status`);
 
-                if (!response.ok) throw new Error("Server returned " + response.status);
+                if (!response.ok) throw new Error("Bad response");
 
                 const data = await response.json();
 
@@ -287,7 +270,6 @@
 
                 const currentStatus = data.roomStatus || "UNKNOWN";
 
-                // Detect status change to start/stop the busy timer
                 if (currentStatus !== lastKnownStatus) {
                     if (currentStatus === "BUSY") {
                         startBusyTimer();
@@ -298,22 +280,6 @@
                 }
 
                 updateDisplay(currentStatus);
-
-                // Update heartbeat line
-                if (data.admin?.heartbeat) {
-                    const secondsAgo = Math.floor((Date.now() - data.admin.heartbeat) / 1000);
-                    if (secondsAgo > OFFLINE_THRESHOLD_SECONDS) {
-                        debugText.innerText = "⚠ Scanner device is not responding";
-                    } else {
-                        debugText.innerText = `Last signal: ${secondsAgo}s ago`;
-                    }
-                }
-
-                // Update console if ESP32 has a new message and we're not mid-command
-                if (!isWaiting && data.admin?.result && data.admin.result !== lastKnownResult) {
-                    lastKnownResult = data.admin.result;
-                    setLog("> " + data.admin.result, "normal");
-                }
 
             } catch (err) {
                 offlineStreak++;
@@ -329,6 +295,30 @@
                 }
             }
         }, 2000);
+
+        // --- HEARTBEAT WATCHER (separate, uses /api/result with runtime key) ---
+        // Only runs when admin panel is open and key is entered
+        setInterval(async () => {
+            const key = document.getElementById("adminKey").value.trim();
+            if (!key || document.getElementById("admin-panel").style.display !== "block") return;
+
+            try {
+                const res = await fetch(`${RENDER_URL}/api/result`, {
+                    headers: { "Authorization": `Bearer ${key}` }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+
+                if (data.heartbeat) {
+                    const secondsAgo = Math.floor((Date.now() - data.heartbeat) / 1000);
+                    if (secondsAgo > OFFLINE_THRESHOLD_SECONDS) {
+                        debugText.innerText = "⚠ Scanner device is not responding";
+                    } else {
+                        debugText.innerText = `Last signal: ${secondsAgo}s ago`;
+                    }
+                }
+            } catch (e) {}
+        }, 3000);
 
         // --- BUSY TIMER ---
         function startBusyTimer() {
@@ -375,6 +365,20 @@
                     body: JSON.stringify({ cmd: commandString, key: key })
                 });
 
+                // FIX: Server now verifies key and returns 403 if wrong
+                if (res.status === 403) {
+                    shakeInput("adminKey");
+                    setLog("> Access Denied. Wrong admin key.", "error");
+                    setButtonsDisabled(false);
+                    return;
+                }
+
+                if (res.status === 429) {
+                    setLog("> Too many requests. Please wait a moment.", "warn");
+                    setButtonsDisabled(false);
+                    return;
+                }
+
                 if (!res.ok) {
                     setLog("> Could not reach the server. Please try again shortly.", "error");
                     setButtonsDisabled(false);
@@ -383,7 +387,7 @@
 
                 setLog("> Command sent. Waiting for device...", "normal");
                 const timeout = (commandString === "ENROLL") ? 35000 : 8000;
-                await waitForESPResponse(timeout);
+                await waitForESPResponse(timeout, key);
 
             } catch (err) {
                 setLog("> Connection failed. Check your internet connection.", "error");
@@ -391,7 +395,7 @@
 
             setButtonsDisabled(false);
             const resetDelay = (commandString === "ENROLL") ? 35000 : 5000;
-            setTimeout(() => resetCommand(), resetDelay);
+            setTimeout(() => resetCommand(key), resetDelay);
         }
 
         // --- DELETE SPECIFIC ID ---
@@ -424,6 +428,19 @@
                     body: JSON.stringify({ cmd: "DELETE_ID", id: idNum, key: key })
                 });
 
+                if (res.status === 403) {
+                    shakeInput("adminKey");
+                    setLog("> Access Denied. Wrong admin key.", "error");
+                    setButtonsDisabled(false);
+                    return;
+                }
+
+                if (res.status === 429) {
+                    setLog("> Too many requests. Please wait a moment.", "warn");
+                    setButtonsDisabled(false);
+                    return;
+                }
+
                 if (!res.ok) {
                     setLog("> Could not reach the server. Please try again shortly.", "error");
                     setButtonsDisabled(false);
@@ -431,29 +448,46 @@
                 }
 
                 setLog("> Command sent. Waiting for device...", "normal");
-                await waitForESPResponse(8000);
+                await waitForESPResponse(8000, key);
 
             } catch (err) {
                 setLog("> Connection failed. Check your internet connection.", "error");
             }
 
             setButtonsDisabled(false);
-            setTimeout(() => resetCommand(), 5000);
+            setTimeout(() => resetCommand(key), 5000);
+        }
+
+        // --- DELETE ALL WITH DOUBLE CONFIRMATION ---
+        async function confirmDeleteAll() {
+            const first = confirm("⚠️ This will permanently delete ALL fingerprints. Are you sure?");
+            if (!first) return;
+            const second = prompt("Type DELETE to confirm:");
+            if (second !== "DELETE") {
+                setLog("> Cancelled. Nothing was deleted.", "warn");
+                return;
+            }
+            runCmd("DELETE_ALL");
         }
 
         // --- WAIT FOR ESP32 RESPONSE ---
-        async function waitForESPResponse(timeoutMs) {
+        // Now uses /api/result instead of /api/status
+        // Key is passed at runtime — never stored in JS
+        async function waitForESPResponse(timeoutMs, key) {
             isWaiting = true;
             const start = Date.now();
 
             while (Date.now() - start < timeoutMs) {
                 await sleep(1000);
                 try {
-                    const res  = await fetch(`${RENDER_URL}/api/status`, {
-                        headers: { "Authorization": `Bearer ${READ_TOKEN}` }
+                    const res = await fetch(`${RENDER_URL}/api/result`, {
+                        headers: { "Authorization": `Bearer ${key}` }
                     });
+
+                    if (!res.ok) continue;
+
                     const data = await res.json();
-                    const result = data.admin?.result;
+                    const result = data.result;
 
                     if (result && result !== lastKnownResult) {
                         lastKnownResult = result;
@@ -474,33 +508,34 @@
         }
 
         // --- RESET COMMAND ---
-        async function resetCommand() {
+        async function resetCommand(key) {
             try {
                 await fetch(`${RENDER_URL}/api/command`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ cmd: "0", key: "0" })
+                    body: JSON.stringify({ cmd: "0", key: key })
                 });
             } catch (e) {}
         }
 
-        // --- KEEP RENDER AWAKE (pings every 10 min) ---
+        // --- KEEP RENDER AWAKE ---
         setInterval(() => {
             fetch(`${RENDER_URL}/`).catch(() => {});
         }, 10 * 60 * 1000);
 
         // --- UI HELPERS ---
-
         function updateDisplay(status) {
             circle.className = "status-circle";
 
             if (status === "FREE") {
                 circle.classList.add("status-free");
                 statusWord.innerText = "FREE";
+                statusWord.style.fontSize = "2rem";
                 label.innerText = "Room is Available";
             } else if (status === "BUSY") {
                 circle.classList.add("status-busy");
                 statusWord.innerText = "BUSY";
+                statusWord.style.fontSize = "2rem";
                 label.innerText = "Do Not Disturb";
             } else if (status === "OFFLINE") {
                 circle.classList.add("status-offline");
@@ -557,4 +592,3 @@
     </script>
 </body>
 </html>
-
