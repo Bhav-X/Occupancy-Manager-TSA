@@ -269,9 +269,18 @@
                     staleCount = 0; // heartbeat changed — device is alive
                 }
 
-                // After 15 stale checks → go inactive
+                // After 15 stale checks → go inactive directly, don't throw
                 if (staleCount >= 15) {
-                    throw new Error("Heartbeat stale");
+                    stopBusyTimer();
+                    lastKnownStatus = null;
+                    firstPoll = true;
+                    updateDisplay("OFFLINE");
+                    debugText.innerText = "";
+                    showNotice(
+                        "The room monitoring system is currently starting up or unreachable. " +
+                        "Please check back in a moment or ask the room administrator for assistance."
+                    );
+                    return; // stop here, don't process FREE/BUSY
                 }
 
                 offlineStreak = 0;
@@ -301,9 +310,6 @@
                     stopBusyTimer();
                     lastKnownStatus = null;
                     firstPoll = true;
-                    staleCount = 0;
-                    // Don't reset prevHeartbeat/currHeartbeat here
-                    // They stay stale until ESP32 actually sends a new value
                     updateDisplay("OFFLINE");
                     debugText.innerText = "";
                     showNotice(
