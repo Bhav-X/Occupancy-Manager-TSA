@@ -245,6 +245,8 @@
         let timerInterval    = null;
         let lastKnownStatus  = null;
         let firstPoll        = true;
+        let lastHeartbeat    = -1;
+        let staleCount       = 0;
 
         // --- PUBLIC STATUS WATCHER ---
         setInterval(async () => {
@@ -255,10 +257,17 @@
                 const data = await response.json();
                 const currentStatus = data.roomStatus || "UNKNOWN";
                 const heartbeat = data.heartbeat || 0;
-                const secondsAgo = Math.floor((Date.now() - heartbeat) / 1000);
 
-                // If heartbeat is stale or missing, treat as offline
-                if (heartbeat === 0 || secondsAgo > OFFLINE_THRESHOLD_SECONDS) {
+                // Detect stale heartbeat by checking if value changed
+                if (heartbeat === lastHeartbeat) {
+                    staleCount++;
+                } else {
+                    staleCount = 0;
+                    lastHeartbeat = heartbeat;
+                }
+
+                // If heartbeat hasn't changed for 15 polls (30 seconds) → offline
+                if (heartbeat === 0 || staleCount >= 15) {
                     throw new Error("Heartbeat stale");
                 }
 
@@ -288,7 +297,9 @@
                 if (offlineStreak >= 2) {
                     stopBusyTimer();
                     lastKnownStatus = null;
-                    firstPoll = true; // reset so timer doesn't carry over
+                    firstPoll = true;
+                    lastHeartbeat = -1;
+                    staleCount = 0;
                     updateDisplay("OFFLINE");
                     debugText.innerText = "";
                     showNotice(
