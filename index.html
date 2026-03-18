@@ -245,8 +245,9 @@
         let timerInterval    = null;
         let lastKnownStatus  = null;
         let firstPoll        = true;
-        let lastHeartbeat    = -1;
         let staleCount       = 0;
+        let prevHeartbeat    = -1;  // copies heartbeat every 3 seconds
+        let currHeartbeat    = -1;  // latest heartbeat from server
 
         // --- PUBLIC STATUS WATCHER ---
         setInterval(async () => {
@@ -258,16 +259,18 @@
                 const currentStatus = data.roomStatus || "UNKNOWN";
                 const heartbeat = data.heartbeat || 0;
 
-                // Detect stale heartbeat by checking if value changed
-                if (heartbeat === lastHeartbeat) {
+                // Update current heartbeat
+                currHeartbeat = heartbeat;
+
+                // If currHeartbeat == prevHeartbeat, heartbeat hasn't changed → stale
+                if (currHeartbeat === prevHeartbeat || heartbeat === 0) {
                     staleCount++;
                 } else {
-                    staleCount = 0;
-                    lastHeartbeat = heartbeat;
+                    staleCount = 0; // heartbeat changed — device is alive
                 }
 
-                // If heartbeat hasn't changed for 15 polls (30 seconds) → offline
-                if (heartbeat === 0 || staleCount >= 15) {
+                // After 15 stale checks → go inactive
+                if (staleCount >= 15) {
                     throw new Error("Heartbeat stale");
                 }
 
@@ -298,8 +301,9 @@
                     stopBusyTimer();
                     lastKnownStatus = null;
                     firstPoll = true;
-                    lastHeartbeat = -1;
                     staleCount = 0;
+                    // Don't reset prevHeartbeat/currHeartbeat here
+                    // They stay stale until ESP32 actually sends a new value
                     updateDisplay("OFFLINE");
                     debugText.innerText = "";
                     showNotice(
@@ -309,6 +313,11 @@
                 }
             }
         }, 2000);
+
+        // --- HEARTBEAT SNAPSHOT (copies every 3 seconds for stale detection) ---
+        setInterval(() => {
+            prevHeartbeat = currHeartbeat;
+        }, 3000);
 
         // --- HEARTBEAT WATCHER ---
         setInterval(async () => {
