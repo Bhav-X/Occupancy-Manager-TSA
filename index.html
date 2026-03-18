@@ -254,6 +254,13 @@
 
                 const data = await response.json();
                 const currentStatus = data.roomStatus || "UNKNOWN";
+                const heartbeat = data.heartbeat || 0;
+                const secondsAgo = Math.floor((Date.now() - heartbeat) / 1000);
+
+                // If heartbeat is stale or missing, treat as offline
+                if (heartbeat === 0 || secondsAgo > OFFLINE_THRESHOLD_SECONDS) {
+                    throw new Error("Heartbeat stale");
+                }
 
                 offlineStreak = 0;
                 notice.style.display = "none";
