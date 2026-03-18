@@ -262,20 +262,17 @@
                 if (firstPoll) {
                     firstPoll = false;
                     lastKnownStatus = currentStatus;
+                    if (currentStatus === "FREE" || currentStatus === "BUSY") {
+                        resetStateTimer();
+                    }
                     updateDisplay(currentStatus);
-                    // Only start timer if BUSY was already set before we loaded
-                    // Don't start from scratch — we don't know when it became BUSY
                     return;
                 }
 
                 // Status changed — handle transitions
                 if (currentStatus !== lastKnownStatus) {
                     lastKnownStatus = currentStatus;
-                    if (currentStatus === "BUSY") {
-                        startBusyTimer(); // Only starts timer when it BECOMES busy
-                    } else {
-                        stopBusyTimer();
-                    }
+                    resetStateTimer();
                     updateDisplay(currentStatus);
                 }
 
@@ -316,16 +313,15 @@
             } catch (e) {}
         }, 3000);
 
-        // --- BUSY TIMER (below circle, light) ---
-        function startBusyTimer() {
-            busyStartTime = Date.now();
+        // --- STATE TIMER (resets on every FREE/BUSY change) ---
+        function resetStateTimer() {
             clearInterval(timerInterval);
+            busyStartTime = Date.now();
             timerInterval = setInterval(() => {
-                if (!busyStartTime) return;
                 const elapsed = Math.floor((Date.now() - busyStartTime) / 1000);
                 const mins = Math.floor(elapsed / 60);
                 const secs = elapsed % 60;
-                busyTimer.innerText = `Occupied for ${String(mins).padStart(2,"0")}:${String(secs).padStart(2,"0")}`;
+                busyTimer.innerText = `${String(mins).padStart(2,"0")}:${String(secs).padStart(2,"0")}`;
             }, 1000);
         }
 
