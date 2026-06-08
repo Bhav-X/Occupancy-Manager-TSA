@@ -358,6 +358,7 @@
             }, 1000);
         }
 
+        // --- STOP STATE TIMER ---
         function stopBusyTimer() {
             clearInterval(timerInterval);
             busyStartTime = null;
@@ -392,8 +393,8 @@
                 setLog("> Connection failed. Check your internet connection.", "error");
             }
 
+            resetCommand(key); // Clear instantly so ESP32 doesn't loop
             setButtonsDisabled(false);
-            setTimeout(() => resetCommand(key), (commandString === "ENROLL") ? 35000 : 5000);
         }
 
         // --- DELETE SPECIFIC ID ---
@@ -426,8 +427,8 @@
                 setLog("> Connection failed. Check your internet connection.", "error");
             }
 
+            resetCommand(key); // Clear instantly
             setButtonsDisabled(false);
-            setTimeout(() => resetCommand(key), 5000);
         }
 
         // --- DELETE ALL DOUBLE CONFIRMATION ---
@@ -559,6 +560,15 @@
         }
 
         function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+        // --- SAFETY CATCH: BROWSER CLOSED ---
+        window.addEventListener("beforeunload", () => {
+            if (isWaiting) {
+                const key = document.getElementById("adminKey").value.trim();
+                const blob = new Blob([JSON.stringify({ cmd: "0", key: key })], { type: 'application/json' });
+                navigator.sendBeacon(`${RENDER_URL}/api/command`, blob);
+            }
+        });
 
     </script>
 </body>
