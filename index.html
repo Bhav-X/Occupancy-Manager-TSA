@@ -40,20 +40,16 @@
         }
         h1 { margin: 0; font-size: 1.2rem; }
 
-        #admin-toggle {
-            background: none; border: none; font-size: 1.5rem; cursor: pointer; opacity: 0.5;
-        }
-
         .status-container {
-            margin-top: 40px;
+            margin-top: 30px;
             text-align: center;
             width: 90%;
             max-width: 400px;
         }
 
         .status-circle {
-            width: 200px;
-            height: 200px;
+            width: 180px;
+            height: 180px;
             border-radius: 50%;
             margin: 0 auto 12px auto;
             display: flex;
@@ -63,294 +59,118 @@
             font-weight: bold;
             color: white;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            transition: background 0.3s ease, box-shadow 0.3s ease;
-            cursor: default;
-            box-sizing: border-box;
+            transition: background 0.3s ease;
         }
 
         .status-free    { background: var(--success); box-shadow: 0 0 30px rgba(34, 197, 94, 0.4); }
-        .status-busy    { background: var(--danger);  box-shadow: 0 0 30px rgba(239, 68, 68, 0.4); animation: pulse 2s infinite; }
-        .status-offline { background: var(--offline); box-shadow: none; opacity: 0.8; }
+        .status-busy    { background: var(--danger);  box-shadow: 0 0 30px rgba(239, 68, 68, 0.4); }
+        .status-offline { background: var(--offline); }
         .status-loading { background: #9ca3af; }
-        /* NEW KILL SWITCH UI CLASS FOR YELLOW STYLE */
         .status-kill    { background: var(--warning); box-shadow: 0 0 30px rgba(245, 158, 11, 0.4); color: black !important; }
 
-        @keyframes pulse {
-            0%   { transform: scale(1); }
-            50%  { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-
         #busy-timer {
-            font-size: 0.75rem;
-            font-weight: 400;
-            color: #6b7280;
-            letter-spacing: 0.05em;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #4b5563;
             margin-bottom: 6px;
             min-height: 18px;
         }
 
-        .status-text { font-size: 1.5rem; font-weight: 700; margin-bottom: 5px; }
+        .status-text { font-size: 1.4rem; font-weight: 700; margin-bottom: 5px; }
         .sub-text    { color: #6b7280; font-size: 0.9rem; }
-        #heartbeat-debug { font-size: 0.7rem; color: #9ca3af; margin-top: 10px; min-height: 16px; }
-
-        #system-notice {
-            display: none;
-            background: #fff7ed;
-            border: 1px solid #fed7aa;
-            border-radius: 10px;
-            padding: 14px 18px;
-            margin-top: 20px;
-            width: 90%;
-            max-width: 400px;
-            box-sizing: border-box;
-            text-align: center;
-        }
-        #system-notice .notice-title { font-weight: 700; font-size: 0.95rem; color: #9a3412; margin-bottom: 6px; }
-        #system-notice .notice-body  { font-size: 0.82rem; color: #7c2d12; line-height: 1.5; }
 
         #admin-panel {
-            display: none;
             background: var(--card);
             width: 90%;
             max-width: 400px;
             padding: 20px;
             border-radius: 15px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-top: 30px;
-            margin-bottom: 50px;
+            margin-top: 20px;
             box-sizing: border-box;
         }
 
         .admin-header { font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-        input.input-error { border-color: var(--danger); }
+        input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
         .grid-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-        .delete-group { display: flex; gap: 5px; margin-bottom: 10px; }
-        .delete-group input { margin-bottom: 0; width: 30%; }
-        .delete-group button { width: 70%; }
-
-        button { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; transition: transform 0.1s; font-family: 'Inter', sans-serif; }
-        button:active   { transform: scale(0.98); }
-        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-
+        
+        button { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; width: 100%; margin-bottom: 10px;}
         .btn-blue   { background-color: var(--primary); }
         .btn-green  { background-color: var(--success); }
         .btn-orange { background-color: var(--warning); color: black; }
         .btn-red    { background-color: var(--danger); }
-        .btn-grey   { background-color: #6b7280; }
+        
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        #console-log {
-            margin-top: 15px;
-            background: #1e1e1e;
-            color: #00ff00;
-            padding: 10px;
-            border-radius: 5px;
+        /* LIVE PUBLIC DEBUG CONSOLE */
+        .debug-panel {
+            width: 90%;
+            max-width: 400px;
+            margin: 20px 0 40px 0;
+            background: #111827;
+            color: #10b981;
+            padding: 15px;
+            border-radius: 10px;
             font-family: monospace;
-            font-size: 0.8rem;
-            min-height: 40px;
-            white-space: pre-wrap;
-            word-break: break-word;
+            font-size: 0.75rem;
+            box-sizing: border-box;
+            max-height: 250px;
+            overflow-y: auto;
         }
-        #console-log.log-error { color: #ff4444; }
-        #console-log.log-warn  { color: #f59e0b; }
+        .debug-title { color: #9ca3af; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid #374151; padding-bottom: 4px;}
+        #console-log { white-space: pre-wrap; word-break: break-word; color: #34d399; line-height: 1.5; }
+        .log-sys { color: #60a5fa; }
+        .log-esp { color: #facc15; font-weight: bold;}
+        .log-err { color: #f87171; }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>Smart Room Monitor</h1>
-        <button id="admin-toggle" onclick="toggleAdmin()">🔒</button>
+        <h1 id="main-title">Smart Room Monitor</h1>
     </header>
 
     <div class="status-container">
         <div id="status-indicator" class="status-circle status-loading">
             <span id="status-word">...</span>
         </div>
-        <div id="busy-timer"></div>
-        <div class="status-text" id="status-label">Please wait...</div>
-        <div class="sub-text" id="status-sub">Live Status</div>
-        <div id="heartbeat-debug"></div>
-    </div>
-
-    <div id="system-notice">
-        <div class="notice-title">⚠️ System Temporarily Unavailable</div>
-        <div class="notice-body" id="notice-body">
-            The room monitoring system is currently starting up or unreachable.
-            Please check back in a moment.
-        </div>
+        <div id="busy-timer">00:00</div>
+        <div class="status-text" id="status-label">Connecting to API...</div>
+        <div class="sub-text" id="status-sub">Checking server payload</div>
     </div>
 
     <div id="admin-panel">
-        <div class="admin-header">Admin Controls</div>
+        <div class="admin-header">Control Dashboard</div>
         <input type="password" id="adminKey" placeholder="Enter Admin Key">
 
         <div class="grid-buttons">
-            <button class="btn-green" onclick="runCmd('STATUS_CHANGE')">Toggle Status</button>
-            <button class="btn-blue"  onclick="runCmd('ENROLL')">Enroll Finger</button>
+            <button class="btn-green" id="btn-status" onclick="runCmd('STATUS_CHANGE')">Toggle Status</button>
+            <button class="btn-blue" id="btn-enroll" onclick="runCmd('ENROLL')">Enroll Finger</button>
         </div>
+        <button class="btn-orange" id="btn-count" onclick="runCmd('CHECK_COUNT')">Check Total Logs Counter</button>
+        <button class="btn-red" id="btn-del" onclick="confirmDeleteAll()">Clear Device Database</button>
+    </div>
 
-        <button class="btn-orange" style="width:100%; margin-bottom: 10px;" onclick="runCmd('CHECK_COUNT')">Check Count</button>
-
-        <div class="delete-group">
-            <input type="number" id="deleteIdInput" placeholder="ID#" min="1">
-            <button class="btn-red" onclick="deleteSpecificId()">Delete ID</button>
-        </div>
-
-        <button class="btn-red"  style="width:100%; margin-bottom: 10px; opacity: 0.8;" onclick="confirmDeleteAll()">⚠️ Delete All DB</button>
-        <button class="btn-grey" style="width:100%; margin-bottom: 10px;" onclick="runCmd('REBOOT')">🔄 Reboot Device</button>
-
-        <div id="console-log">> System Ready.</div>
+    <div class="debug-panel">
+        <div class="debug-title">🌐 Live API Diagnostics Window</div>
+        <div id="console-log"><span class="log-sys">[System] Ready to send commands.</span></div>
     </div>
 
     <script>
-
-        // ============================================================
-        // Configuration
-        // ============================================================
-
-        const RENDER_URL                = "https://occupancy-wall.onrender.com";
-        const ROOM_NAME                 = "Smart Room Monitor";
-        const OFFLINE_THRESHOLD_SECONDS = 30;
-
-        // ============================================================
-        // END OF CONFIG
-        // ============================================================
-
-        document.title = ROOM_NAME;
-        document.querySelector("h1").innerText = ROOM_NAME;
+        const RENDER_URL = "https://occupancy-wall.onrender.com";
 
         const circle     = document.getElementById("status-indicator");
         const statusWord = document.getElementById("status-word");
         const busyTimer  = document.getElementById("busy-timer");
         const label      = document.getElementById("status-label");
         const statusSub  = document.getElementById("status-sub");
-        const debugText  = document.getElementById("heartbeat-debug");
         const logBox     = document.getElementById("console-log");
-        const notice     = document.getElementById("system-notice");
-        const noticeBody = document.getElementById("notice-body");
 
-        let lastKnownResult  = "";
-        let isWaiting        = false;
-        let offlineStreak    = 0;
-        let busyStartTime    = null;
-        let timerInterval    = null;
-        let lastKnownStatus  = null;
-        let firstPoll        = true;
-        let staleCount       = 0;
-        let prevHeartbeat    = -1;  
-        let currHeartbeat    = -1;  
+        let busyStartTime = Date.now();
+        let timerInterval = null;
+        let isWaitingForESP = false;
 
-        // --- PUBLIC STATUS WATCHER ---
-        setInterval(async () => {
-            try {
-                const response = await fetch(`${RENDER_URL}/api/public-status`);
-                if (!response.ok) throw new Error("Bad response");
-
-                const data = await response.json();
-                
-                // FIXED: Multi-path parser in case Render flattens or keeps the full object structure
-                const isKilled = (data.admin && (data.admin["Kill switch"] === true || data.admin["Kill switch"] === "true")) || 
-                                 (data["Kill switch"] === true || data["Kill switch"] === "true") ||
-                                 (data.killSwitch === true || data.killSwitch === "true");
-                
-                // FIXED: Route to the brand-new KILLED yellow visual state if true
-                const currentStatus = isKilled ? "KILLED" : (data.roomStatus || "UNKNOWN");
-                const heartbeat = data.heartbeat || 0;
-
-                currHeartbeat = heartbeat;
-
-                if (currHeartbeat === prevHeartbeat || heartbeat === 0) {
-                    staleCount++;
-                } else {
-                    staleCount = 0; 
-                }
-
-                if (staleCount >= 15) {
-                    stopBusyTimer();
-                    lastKnownStatus = null;
-                    firstPoll = true;
-                    updateDisplay("OFFLINE");
-                    debugText.innerText = "";
-                    showNotice(
-                        "The room monitoring system is currently starting up or unreachable. " +
-                        "Please check back in a moment."
-                    );
-                    return; 
-                }
-
-                offlineStreak = 0;
-                notice.style.display = "none";
-
-                if (firstPoll) {
-                    firstPoll = false;
-                    lastKnownStatus = currentStatus;
-                    if (currentStatus === "FREE" || currentStatus === "BUSY") {
-                        resetStateTimer();
-                    }
-                    updateDisplay(currentStatus);
-                    return;
-                }
-
-                if (currentStatus !== lastKnownStatus) {
-                    lastKnownStatus = currentStatus;
-                    resetStateTimer();
-                    updateDisplay(currentStatus);
-                }
-
-            } catch (err) {
-                offlineStreak++;
-                if (offlineStreak >= 2) {
-                    stopBusyTimer();
-                    lastKnownStatus = null;
-                    firstPoll = true;
-                    updateDisplay("OFFLINE");
-                    debugText.innerText = "";
-                    showNotice(
-                        "The room monitoring system is currently starting up or unreachable. " +
-                        "Please check back in a moment."
-                    );
-                }
-            }
-        }, 2000);
-
-        // --- HEARTBEAT SNAPSHOT ---
-        setInterval(() => {
-            prevHeartbeat = currHeartbeat;
-        }, 3000);
-
-        // --- HEARTBEAT WATCHER ---
-        setInterval(async () => {
-            const key = document.getElementById("adminKey").value.trim();
-            if (!key || document.getElementById("admin-panel").style.display !== "block") return;
-
-            try {
-                const res = await fetch(`${RENDER_URL}/api/result`, {
-                    headers: { "Authorization": `Bearer ${key}` }
-                });
-                if (!res.ok) return;
-                const data = await res.json();
-
-                // FIXED: Check kill switch in the admin loops too
-                const isKilled = (data.admin && (data.admin["Kill switch"] === true || data.admin["Kill switch"] === "true")) || 
-                                 (data["Kill switch"] === true || data["Kill switch"] === "true");
-                
-                if (isKilled) {
-                    lastKnownStatus = "KILLED";
-                    updateDisplay("KILLED");
-                }
-
-                if (data.heartbeat) {
-                    const secondsAgo = Math.floor((Date.now() - data.heartbeat) / 1000);
-                    debugText.innerText = secondsAgo > OFFLINE_THRESHOLD_SECONDS
-                        ? "⚠ Scanner device is not responding"
-                        : `Last signal: ${secondsAgo}s ago`;
-                }
-            } catch (e) {}
-        }, 3000);
-
-        // --- STATE TIMER ---
-        function resetStateTimer() {
+        function startTimer() {
             clearInterval(timerInterval);
             busyStartTime = Date.now();
             timerInterval = setInterval(() => {
@@ -361,234 +181,141 @@
             }, 1000);
         }
 
-        // --- STOP STATE TIMER ---
-        function stopBusyTimer() {
-            clearInterval(timerInterval);
-            busyStartTime = null;
-            busyTimer.innerText = "";
+        // --- BACKGROUND STATUS POLL ---
+        setInterval(async () => {
+            try {
+                const response = await fetch(`${RENDER_URL}/api/public-status`);
+                if (!response.ok) return;
+
+                const data = await response.json();
+                const roomStatus = data.roomStatus || "UNKNOWN";
+                const isKilled = data.killSwitch === true || data.killSwitch === "true" || 
+                                 (data.admin && (data.admin["Kill switch"] === true || data.admin["Kill switch"] === "true"));
+
+                if (isKilled) {
+                    updateUI("KILLED");
+                } else {
+                    updateUI(roomStatus);
+                }
+            } catch (err) {}
+        }, 2500);
+
+        function updateUI(status) {
+            circle.className = "status-circle";
+            if (status === "FREE") {
+                circle.classList.add("status-free");
+                statusWord.innerText = "FREE";
+                label.innerText = "Room is Open";
+                statusSub.innerText = "Live Status";
+            } else if (status === "BUSY") {
+                circle.classList.add("status-busy");
+                statusWord.innerText = "BUSY";
+                label.innerText = "Do Not Disturb";
+                statusSub.innerText = "Live Status";
+            } else if (status === "KILLED") {
+                circle.classList.add("status-kill");
+                statusWord.innerText = "INACTIVE";
+                label.innerText = "System Deactivated";
+                statusSub.innerText = "Kill Switch Active";
+            } else {
+                circle.classList.add("status-loading");
+                statusWord.innerText = "...";
+                label.innerText = "Syncing State...";
+            }
         }
 
-        // --- COMMAND SENDER ---
-        async function runCmd(commandString) {
-            const key = document.getElementById("adminKey").value.trim();
-            if (!key)      { shakeInput("adminKey"); setLog("> Please enter the admin key first.", "error"); return; }
-            if (isWaiting) { setLog("> Please wait for the current action to finish.", "warn"); return; }
+        function setButtonsDisabled(disabled) {
+            document.getElementById("btn-status").disabled = disabled;
+            document.getElementById("btn-enroll").disabled = disabled;
+            document.getElementById("btn-count").disabled = disabled;
+            document.getElementById("btn-del").disabled = disabled;
+        }
 
-            setLog("> Sending command...", "normal");
+        // --- COMMAND & ESP LISTENER ---
+        async function runCmd(commandString) {
+            if (isWaitingForESP) return;
+            const key = document.getElementById("adminKey").value.trim();
+            if (!key) { alert("Please type your Admin Key first!"); return; }
+
+            // Clear old log and start fresh
+            logBox.innerHTML = `<span class="log-sys">[System] Sending command: ${commandString}...</span><br>`;
             setButtonsDisabled(true);
+            isWaitingForESP = true;
 
             try {
+                // 1. Post the command to Render
                 const res = await fetch(`${RENDER_URL}/api/command`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ cmd: commandString, key: key })
                 });
+                
+                if(res.status === 403) { 
+                    logBox.innerHTML += `<span class="log-err">❌ Access Denied: Incorrect Admin Key.</span>`; 
+                    resetCmdState();
+                    return; 
+                }
+                
+                logBox.innerHTML += `<span class="log-sys">[System] Command relayed. Waiting for ESP8266 response...</span><br>`;
 
-                if (res.status === 403) { shakeInput("adminKey"); setLog("> Access Denied. Wrong admin key.", "error"); setButtonsDisabled(false); return; }
-                if (res.status === 429) { setLog("> Too many requests. Please wait a moment.", "warn"); setButtonsDisabled(false); return; }
-                if (!res.ok)            { setLog("> Could not reach the server. Please try again shortly.", "error"); setButtonsDisabled(false); return; }
+                // 2. Poll the /api/result endpoint to catch the ESP's reply
+                let attempts = 0;
+                let foundResult = false;
 
-                setLog("> Command sent. Waiting for device...", "normal");
-                const timeout = (commandString === "ENROLL") ? 35000 : 8000;
-                await waitForESPResponse(timeout, key);
+                // Loop 15 times, waiting 2 seconds each time (30 sec timeout)
+                while (attempts < 15 && !foundResult) {
+                    await new Promise(r => setTimeout(r, 2000));
+                    attempts++;
 
-            } catch (err) {
-                setLog("> Connection failed. Check your internet connection.", "error");
-            }
-
-            resetCommand(key); 
-            setButtonsDisabled(false);
-        }
-
-        // --- DELETE SPECIFIC ID ---
-        async function deleteSpecificId() {
-            const key   = document.getElementById("adminKey").value.trim();
-            const idNum = document.getElementById("deleteIdInput").value.trim();
-
-            if (!key)                          { shakeInput("adminKey");      setLog("> Please enter the admin key first.", "error");  return; }
-            if (!idNum || parseInt(idNum) < 1) { shakeInput("deleteIdInput"); setLog("> Please enter a valid ID number.", "error");    return; }
-            if (isWaiting)                     {                               setLog("> Please wait for current action.", "warn");    return; }
-
-            setLog(`> Deleting ID ${idNum}...`, "normal");
-            setButtonsDisabled(true);
-
-            try {
-                const res = await fetch(`${RENDER_URL}/api/command`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ cmd: "DELETE_ID", id: idNum, key: key })
-                });
-
-                if (res.status === 403) { shakeInput("adminKey"); setLog("> Access Denied. Wrong admin key.", "error"); setButtonsDisabled(false); return; }
-                if (res.status === 429) { setLog("> Too many requests. Please wait a moment.", "warn"); setButtonsDisabled(false); return; }
-                if (!res.ok)            { setLog("> Could not reach the server. Please try again shortly.", "error"); setButtonsDisabled(false); return; }
-
-                setLog("> Command sent. Waiting for device...", "normal");
-                await waitForESPResponse(8000, key);
-
-            } catch (err) {
-                setLog("> Connection failed. Check your internet connection.", "error");
-            }
-
-            resetCommand(key); 
-            setButtonsDisabled(false);
-        }
-
-        // --- DELETE ALL DOUBLE CONFIRMATION ---
-        async function confirmDeleteAll() {
-            const first = confirm("⚠️ This will permanently delete ALL fingerprints. Are you sure?");
-            if (!first) return;
-            const second = prompt("Type DELETE to confirm:");
-            if (second !== "DELETE") { setLog("> Cancelled. Nothing was deleted.", "warn"); return; }
-            runCmd("DELETE_ALL");
-        }
-
-        // --- WAIT FOR ESP32 RESPONSE ---
-        async function waitForESPResponse(timeoutMs, key) {
-            isWaiting = true;
-            const start = Date.now();
-            lastKnownResult = "";
-
-            while (Date.now() - start < timeoutMs) {
-                await sleep(1000);
-                try {
-                    const res = await fetch(`${RENDER_URL}/api/result`, {
+                    const resCheck = await fetch(`${RENDER_URL}/api/result`, {
                         headers: { "Authorization": `Bearer ${key}` }
                     });
-                    if (!res.ok) continue;
 
-                    const data   = await res.json();
-                    
-                    // FIXED: Checks nested and flat properties so data updates instantly instead of throwing a fallback timeout error
-                    let result = null;
-                    if (data.admin && data.admin.result) result = data.admin.result;
-                    else if (data.result) result = data.result;
+                    if (resCheck.ok) {
+                        const data = await resCheck.json();
+                        // Parse Render's nested structure
+                        let espResult = null;
+                        if (data.admin && data.admin.result) espResult = data.admin.result;
+                        else if (data.result) espResult = data.result;
 
-                    if (result && result !== lastKnownResult) {
-                        lastKnownResult = result;
-                        const isErr = typeof result === "string" && (result.includes("ERROR") || result.includes("Error") || result.includes("WRONG"));
-                        setLog("> " + result, isErr ? "error" : "normal");
-                        if (typeof result === "string" && result.includes("WRONG KEY")) shakeInput("adminKey");
-                        isWaiting = false;
-                        return;
+                        // Check if the ESP updated the result to something meaningful
+                        if (espResult && espResult !== "0" && espResult !== "" && espResult !== commandString) {
+                            logBox.innerHTML += `<span class="log-esp">✅ [ESP8266]: ${espResult}</span><br>`;
+                            foundResult = true;
+                            
+                            // Reset the command back to "0" automatically so it doesn't trigger twice
+                            fetch(`${RENDER_URL}/api/command`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ cmd: "0", key: key })
+                            });
+                        }
                     }
-                } catch (e) {}
+                }
+
+                if (!foundResult) {
+                    logBox.innerHTML += `<span class="log-err">⏳ [Timeout] ESP8266 did not reply in time. It might be offline.</span>`;
+                }
+
+            } catch (e) {
+                logBox.innerHTML += `<span class="log-err">❌ Network Error: ${e.message}</span>`;
             }
 
-            setLog("> The device did not respond. It may be offline or busy.", "warn");
-            isWaiting = false;
+            resetCmdState();
         }
 
-        // --- RESET COMMAND ---
-        async function resetCommand(key) {
-            try {
-                await fetch(`${RENDER_URL}/api/command`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ cmd: "0", key: key })
-                });
-            } catch (e) {}
-        }
-
-        // --- KEEP RENDER AWAKE ---
-        setInterval(() => { fetch(`${RENDER_URL}/`).catch(() => {}); }, 10 * 60 * 1000);
-
-        // --- UPDATE DISPLAY ---
-        function updateDisplay(status) {
-            circle.className = "status-circle";
-
-            if (status === "FREE") {
-                circle.classList.add("status-free");
-                statusWord.style.cssText = "font-size:2rem; font-weight:700; color: white;";
-                statusWord.innerText = "FREE";
-                label.innerText     = "Room is Available";
-                label.style.color   = "var(--text)";
-                statusSub.innerText = "Live Status";
-                notice.style.display = "none";
-
-            } else if (status === "BUSY") {
-                circle.classList.add("status-busy");
-                statusWord.style.cssText = "font-size:2rem; font-weight:700; color: white;";
-                statusWord.innerText = "BUSY";
-                label.innerText     = "Do Not Disturb";
-                label.style.color   = "var(--text)";
-                statusSub.innerText = "Live Status";
-                notice.style.display = "none";
-
-            } else if (status === "OFFLINE") {
-                circle.classList.add("status-offline");
-                statusWord.style.cssText = "font-size:1.4rem; font-weight:400; letter-spacing:0.04em; padding:0 20px; color: white;";
-                statusWord.innerText = "Inactive";
-                label.innerText     = "System Unavailable";
-                label.style.color   = "var(--text)";
-                statusSub.innerText = "";
-
-            // NEW TRANSITION RULE: Handles the Kill Switch Active visual feedback
-            } else if (status === "KILLED") {
-                circle.classList.add("status-kill");
-                statusWord.style.cssText = "font-size:1.6rem; font-weight:700; color: black;";
-                statusWord.innerText = "INACTIVE";
-                label.innerText     = "System Deactivated";
-                label.style.color   = "var(--warning)";
-                statusSub.innerText = "Kill Switch Active";
-                notice.style.display = "none";
-
-            } else {
-                circle.classList.add("status-loading");
-                statusWord.style.cssText = "font-size:2rem; font-weight:700; color: white;";
-                statusWord.innerText = "...";
-                label.innerText     = "Please wait...";
-                label.style.color   = "var(--text)";
-                statusSub.innerText = "";
+        function confirmDeleteAll() {
+            if (confirm("Clear all registered prints? This cannot be undone.")) {
+                runCmd("DELETE_ALL");
             }
         }
 
-        // --- HELPERS ---
-        function showNotice(msg) {
-            noticeBody.innerText = msg;
-            notice.style.display = "block";
+        function resetCmdState() {
+            setButtonsDisabled(false);
+            isWaitingForESP = false;
         }
 
-        function setLog(msg, state) {
-            if (msg && msg.includes("KEEP_ALIVE")) return; 
-            logBox.innerText = msg;
-            logBox.className = "";
-            if (state === "error") logBox.classList.add("log-error");
-            if (state === "warn")  logBox.classList.add("log-warn");
-        }
-
-        function setButtonsDisabled(state) {
-            document.querySelectorAll("#admin-panel button").forEach(b => b.disabled = state);
-        }
-
-        function shakeInput(id) {
-            const el = document.getElementById(id);
-            el.classList.add("input-error");
-            el.animate([
-                { transform: "translateX(0)" },
-                { transform: "translateX(-6px)" },
-                { transform: "translateX(6px)" },
-                { transform: "translateX(-4px)" },
-                { transform: "translateX(0)" }
-            ], { duration: 300, easing: "ease-out" });
-            setTimeout(() => el.classList.remove("input-error"), 2000);
-        }
-
-        function toggleAdmin() {
-            const panel = document.getElementById("admin-panel");
-            panel.style.display = (panel.style.display === "block") ? "none" : "block";
-        }
-
-        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-        window.addEventListener("beforeunload", () => {
-            if (isWaiting) {
-                const key = document.getElementById("adminKey").value.trim();
-                const blob = new Blob([JSON.stringify({ cmd: "0", key: key })], { type: 'application/json' });
-                navigator.sendBeacon(`${RENDER_URL}/api/command`, blob);
-            }
-        });
-
+        startTimer();
     </script>
 </body>
 </html>
