@@ -204,17 +204,7 @@
     <script>
 
         // ============================================================
-        //
-        //  ██████╗ ██████╗ ███╗   ██╗███████╗██╗ ██████╗ 
-        //  ██╔════╝██╔═══██╗████╗  ██║██╔════╝██║██╔════╝ 
-        //  ██║     ██║   ██║██╔██╗ ██║█████╗  ██║██║  ███╗
-        //  ██║     ██║   ██║██║╚██╗██║██╔══╝  ██║██║   ██║
-        //  ╚██████╗╚██████╔╝██║ ╚████║██║     ██║╚██████╔╝
-        //   ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝ ╚═════╝ 
-        //
         //  CHANGE THESE VALUES TO CONFIGURE YOUR SYSTEM.
-        //  DO NOT SHARE THESE WITH ANYONE.
-        //
         // ============================================================
 
         const RENDER_URL                = "https://occupancy-wall.onrender.com";
@@ -246,8 +236,8 @@
         let lastKnownStatus  = null;
         let firstPoll        = true;
         let staleCount       = 0;
-        let prevHeartbeat    = -1;  // copies heartbeat every 3 seconds
-        let currHeartbeat    = -1;  // latest heartbeat from server
+        let prevHeartbeat    = -1;
+        let currHeartbeat    = -1; 
 
         // --- PUBLIC STATUS WATCHER ---
         setInterval(async () => {
@@ -259,17 +249,14 @@
                 const currentStatus = data.roomStatus || "UNKNOWN";
                 const heartbeat = data.heartbeat || 0;
 
-                // Update current heartbeat
                 currHeartbeat = heartbeat;
 
-                // If currHeartbeat == prevHeartbeat, heartbeat hasn't changed → stale
                 if (currHeartbeat === prevHeartbeat || heartbeat === 0) {
                     staleCount++;
                 } else {
-                    staleCount = 0; // heartbeat changed — device is alive
+                    staleCount = 0; 
                 }
 
-                // After 15 stale checks → go inactive directly, don't throw
                 if (staleCount >= 15) {
                     stopBusyTimer();
                     lastKnownStatus = null;
@@ -280,13 +267,12 @@
                         "The room monitoring system is currently starting up or unreachable. " +
                         "Please check back in a moment."
                     );
-                    return; // stop here, don't process FREE/BUSY
+                    return; 
                 }
 
                 offlineStreak = 0;
                 notice.style.display = "none";
 
-                // On very first poll, just set state without starting timer
                 if (firstPoll) {
                     firstPoll = false;
                     lastKnownStatus = currentStatus;
@@ -297,7 +283,6 @@
                     return;
                 }
 
-                // Status changed — handle transitions
                 if (currentStatus !== lastKnownStatus) {
                     lastKnownStatus = currentStatus;
                     resetStateTimer();
@@ -320,7 +305,6 @@
             }
         }, 2000);
 
-        // --- HEARTBEAT SNAPSHOT (copies every 3 seconds for stale detection) ---
         setInterval(() => {
             prevHeartbeat = currHeartbeat;
         }, 3000);
@@ -338,7 +322,6 @@
                 const data = await res.json();
 
                 if (data.heartbeat) {
-                    // Only show text if device is NOT responding
                     debugText.innerText = (staleCount >= 5)
                         ? "⚠ Scanner device is not responding"
                         : ""; 
@@ -346,7 +329,7 @@
             } catch (e) {}
         }, 3000);
 
-        // --- STATE TIMER (resets on every FREE/BUSY change) ---
+        // --- STATE TIMER ---
         function resetStateTimer() {
             clearInterval(timerInterval);
             busyStartTime = Date.now();
@@ -358,7 +341,6 @@
             }, 1000);
         }
 
-        // --- STOP STATE TIMER ---
         function stopBusyTimer() {
             clearInterval(timerInterval);
             busyStartTime = null;
@@ -375,7 +357,6 @@
             setButtonsDisabled(true);
 
             try {
-                // Pre-fetch the current result from DB so the listener knows what old string to ignore
                 const preRes = await fetch(`${RENDER_URL}/api/result`, { headers: { "Authorization": `Bearer ${key}` } });
                 if (preRes.ok) {
                     const preData = await preRes.json();
@@ -394,13 +375,13 @@
 
                 setLog("> Command sent. Waiting for device...", "normal");
                 const timeout = (commandString === "ENROLL") ? 35000 : 8000;
-                await waitForESPResponse(timeout, key);
+                await waitForESPResponse(timeout, key, commandString);
 
             } catch (err) {
                 setLog("> Connection failed. Check your internet connection.", "error");
             }
 
-            resetCommand(key); // Clear instantly so ESP32 doesn't loop
+            resetCommand(key);
             setButtonsDisabled(false);
         }
 
@@ -417,7 +398,6 @@
             setButtonsDisabled(true);
 
             try {
-                // Pre-fetch the current result from DB so the listener knows what old string to ignore
                 const preRes = await fetch(`${RENDER_URL}/api/result`, { headers: { "Authorization": `Bearer ${key}` } });
                 if (preRes.ok) {
                     const preData = await preRes.json();
@@ -435,17 +415,16 @@
                 if (!res.ok)            { setLog("> Could not reach the server. Please try again shortly.", "error"); setButtonsDisabled(false); return; }
 
                 setLog("> Command sent. Waiting for device...", "normal");
-                await waitForESPResponse(8000, key);
+                await waitForESPResponse(8000, key, "DELETE_ID");
 
             } catch (err) {
                 setLog("> Connection failed. Check your internet connection.", "error");
             }
 
-            resetCommand(key); // Clear instantly
+            resetCommand(key); 
             setButtonsDisabled(false);
         }
 
-        // --- DELETE ALL DOUBLE CONFIRMATION ---
         async function confirmDeleteAll() {
             const first = confirm("⚠️ This will permanently delete ALL fingerprints. Are you sure?");
             if (!first) return;
@@ -454,10 +433,12 @@
             runCmd("DELETE_ALL");
         }
 
-        // --- WAIT FOR ESP32 RESPONSE ---
-        async function waitForESPResponse(timeoutMs, key) {
+        // --- SMART ESP RESPONSE LISTENER ---
+        async function waitForESPResponse(timeoutMs, key, cmd) {
             isWaiting = true;
             const start = Date.now();
+            let gotAnyMessage = false;
+            let lastMessageTime = Date.now();
 
             while (Date.now() - start < timeoutMs) {
                 await sleep(1000);
@@ -470,34 +451,48 @@
                     const data   = await res.json();
                     const result = data.result;
 
+                    // If a NEW message arrives from the ESP
                     if (result && result !== lastKnownResult) {
                         lastKnownResult = result;
-                        const isErr = result.includes("ERROR") || result.includes("Error") || result.includes("WRONG");
+                        gotAnyMessage = true;
+                        lastMessageTime = Date.now();
+                        
+                        const resUpper = result.toUpperCase();
+                        const isErr = resUpper.includes("ERROR") || resUpper.includes("WRONG") || resUpper.includes("FAIL") || resUpper.includes("MATCH");
+                        
                         setLog("> " + result, isErr ? "error" : "normal");
-                        if (result.includes("WRONG KEY")) shakeInput("adminKey");
                         
-                        isWaiting = false;
+                        if (resUpper.includes("WRONG KEY")) shakeInput("adminKey");
                         
-                        // Wait 3.5s before resetting back to System Ready
-                        setTimeout(() => {
-                            if (!isWaiting) setLog("> System Ready.", "normal");
-                        }, 3500);
-
-                        return;
+                        // Break immediately if it's explicitly a terminal error so the user doesn't have to wait
+                        if (isErr) break;
+                        
+                        // For ENROLL, break if it explicitly states it succeeded
+                        if (cmd === "ENROLL" && (resUpper.includes("STORED") || resUpper.includes("SAVED"))) {
+                            break;
+                        }
                     }
+
+                    // For quick commands, assume the ESP is fully done if it goes silent for 2.5 seconds after a message
+                    if (cmd !== "ENROLL" && gotAnyMessage && (Date.now() - lastMessageTime > 2500)) {
+                        break;
+                    }
+
                 } catch (e) {}
             }
 
-            setLog("> The device did not respond. It may be offline or busy.", "warn");
+            if (!gotAnyMessage) {
+                setLog("> The device did not respond. It may be offline or busy.", "warn");
+            }
+
             isWaiting = false;
 
-            // Wait 3.5s before resetting back to System Ready if it times out
+            // Hold the final log message for 3.5s before resetting to System Ready
             setTimeout(() => {
                 if (!isWaiting) setLog("> System Ready.", "normal");
             }, 3500);
         }
 
-        // --- RESET COMMAND ---
         async function resetCommand(key) {
             try {
                 await fetch(`${RENDER_URL}/api/command`, {
@@ -508,10 +503,8 @@
             } catch (e) {}
         }
 
-        // --- KEEP RENDER AWAKE ---
         setInterval(() => { fetch(`${RENDER_URL}/`).catch(() => {}); }, 10 * 60 * 1000);
 
-        // --- UPDATE DISPLAY ---
         function updateDisplay(status) {
             circle.className = "status-circle";
 
@@ -547,7 +540,6 @@
             }
         }
 
-        // --- HELPERS ---
         function showNotice(msg) {
             noticeBody.innerText = msg;
             notice.style.display = "block";
@@ -584,7 +576,6 @@
 
         function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-        // --- SAFETY CATCH: BROWSER CLOSED ---
         window.addEventListener("beforeunload", () => {
             if (isWaiting) {
                 const key = document.getElementById("adminKey").value.trim();
