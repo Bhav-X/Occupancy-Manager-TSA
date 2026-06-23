@@ -338,10 +338,10 @@
                 const data = await res.json();
 
                 if (data.heartbeat) {
-                    // Uses stale count tracker instead of Unix Epoch Math
+                    // Only show text if device is NOT responding
                     debugText.innerText = (staleCount >= 5)
                         ? "⚠ Scanner device is not responding"
-                        : `Device Active (Uptime: ${Math.floor(data.heartbeat / 1000)}s)`;
+                        : ""; 
                 }
             } catch (e) {}
         }, 3000);
@@ -475,7 +475,14 @@
                         const isErr = result.includes("ERROR") || result.includes("Error") || result.includes("WRONG");
                         setLog("> " + result, isErr ? "error" : "normal");
                         if (result.includes("WRONG KEY")) shakeInput("adminKey");
+                        
                         isWaiting = false;
+                        
+                        // Wait 3.5s before resetting back to System Ready
+                        setTimeout(() => {
+                            if (!isWaiting) setLog("> System Ready.", "normal");
+                        }, 3500);
+
                         return;
                     }
                 } catch (e) {}
@@ -483,6 +490,11 @@
 
             setLog("> The device did not respond. It may be offline or busy.", "warn");
             isWaiting = false;
+
+            // Wait 3.5s before resetting back to System Ready if it times out
+            setTimeout(() => {
+                if (!isWaiting) setLog("> System Ready.", "normal");
+            }, 3500);
         }
 
         // --- RESET COMMAND ---
