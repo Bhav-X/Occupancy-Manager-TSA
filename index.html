@@ -205,7 +205,7 @@
 
         // ============================================================
         //
-        //   ██████╗ ██████╗ ███╗   ██╗███████╗██╗ ██████╗ 
+        //  ██████╗ ██████╗ ███╗   ██╗███████╗██╗ ██████╗ 
         //  ██╔════╝██╔═══██╗████╗  ██║██╔════╝██║██╔════╝ 
         //  ██║     ██║   ██║██╔██╗ ██║█████╗  ██║██║  ███╗
         //  ██║     ██║   ██║██║╚██╗██║██╔══╝  ██║██║   ██║
@@ -338,10 +338,10 @@
                 const data = await res.json();
 
                 if (data.heartbeat) {
-                    const secondsAgo = Math.floor((Date.now() - data.heartbeat) / 1000);
-                    debugText.innerText = secondsAgo > OFFLINE_THRESHOLD_SECONDS
+                    // Uses stale count tracker instead of Unix Epoch Math
+                    debugText.innerText = (staleCount >= 5)
                         ? "⚠ Scanner device is not responding"
-                        : `Last signal: ${secondsAgo}s ago`;
+                        : `Device Active (Uptime: ${Math.floor(data.heartbeat / 1000)}s)`;
                 }
             } catch (e) {}
         }, 3000);
@@ -375,6 +375,13 @@
             setButtonsDisabled(true);
 
             try {
+                // Pre-fetch the current result from DB so the listener knows what old string to ignore
+                const preRes = await fetch(`${RENDER_URL}/api/result`, { headers: { "Authorization": `Bearer ${key}` } });
+                if (preRes.ok) {
+                    const preData = await preRes.json();
+                    lastKnownResult = preData.result || "";
+                }
+
                 const res = await fetch(`${RENDER_URL}/api/command`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -404,12 +411,19 @@
 
             if (!key)                          { shakeInput("adminKey");      setLog("> Please enter the admin key first.", "error");  return; }
             if (!idNum || parseInt(idNum) < 1) { shakeInput("deleteIdInput"); setLog("> Please enter a valid ID number.", "error");    return; }
-            if (isWaiting)                     {                               setLog("> Please wait for current action.", "warn");    return; }
+            if (isWaiting)                     {                              setLog("> Please wait for current action.", "warn");    return; }
 
             setLog(`> Deleting ID ${idNum}...`, "normal");
             setButtonsDisabled(true);
 
             try {
+                // Pre-fetch the current result from DB so the listener knows what old string to ignore
+                const preRes = await fetch(`${RENDER_URL}/api/result`, { headers: { "Authorization": `Bearer ${key}` } });
+                if (preRes.ok) {
+                    const preData = await preRes.json();
+                    lastKnownResult = preData.result || "";
+                }
+
                 const res = await fetch(`${RENDER_URL}/api/command`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -444,9 +458,6 @@
         async function waitForESPResponse(timeoutMs, key) {
             isWaiting = true;
             const start = Date.now();
-
-            // Clear old result first so we don't match a stale one
-            lastKnownResult = "";
 
             while (Date.now() - start < timeoutMs) {
                 await sleep(1000);
@@ -573,8 +584,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
