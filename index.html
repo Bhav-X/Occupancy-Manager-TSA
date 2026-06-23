@@ -72,6 +72,8 @@
         .status-busy    { background: var(--danger);  box-shadow: 0 0 30px rgba(239, 68, 68, 0.4); animation: pulse 2s infinite; }
         .status-offline { background: var(--offline); box-shadow: none; opacity: 0.8; }
         .status-loading { background: #9ca3af; }
+        /* NEW KILL SWITCH UI CLASS FOR YELLOW STYLE */
+        .status-kill    { background: var(--warning); box-shadow: 0 0 30px rgba(245, 158, 11, 0.4); color: black !important; }
 
         @keyframes pulse {
             0%   { transform: scale(1); }
@@ -247,11 +249,13 @@
 
                 const data = await response.json();
                 
-                // FIX: Look up the nested Kill switch configuration value
-                const isKilled = data.admin && (data.admin["Kill switch"] === true || data.admin["Kill switch"] === "true");
+                // FIXED: Multi-path parser in case Render flattens or keeps the full object structure
+                const isKilled = (data.admin && (data.admin["Kill switch"] === true || data.admin["Kill switch"] === "true")) || 
+                                 (data["Kill switch"] === true || data["Kill switch"] === "true") ||
+                                 (data.killSwitch === true || data.killSwitch === "true");
                 
-                // FIX: If the kill switch is pulled, override status to OFFLINE (renders as "Inactive")
-                const currentStatus = isKilled ? "OFFLINE" : (data.roomStatus || "UNKNOWN");
+                // FIXED: Route to the brand-new KILLED yellow visual state if true
+                const currentStatus = isKilled ? "KILLED" : (data.roomStatus || "UNKNOWN");
                 const heartbeat = data.heartbeat || 0;
 
                 currHeartbeat = heartbeat;
@@ -326,6 +330,15 @@
                 });
                 if (!res.ok) return;
                 const data = await res.json();
+
+                // FIXED: Check kill switch in the admin loops too
+                const isKilled = (data.admin && (data.admin["Kill switch"] === true || data.admin["Kill switch"] === "true")) || 
+                                 (data["Kill switch"] === true || data["Kill switch"] === "true");
+                
+                if (isKilled) {
+                    lastKnownStatus = "KILLED";
+                    updateDisplay("KILLED");
+                }
 
                 if (data.heartbeat) {
                     const secondsAgo = Math.floor((Date.now() - data.heartbeat) / 1000);
@@ -446,8 +459,10 @@
 
                     const data   = await res.json();
                     
-                    // FIX: Target data.admin.result because 'result' is nested within 'admin' inside your Firebase database setup
-                    const result = (data.admin && data.admin.result) ? data.admin.result : data.result;
+                    // FIXED: Checks nested and flat properties so data updates instantly instead of throwing a fallback timeout error
+                    let result = null;
+                    if (data.admin && data.admin.result) result = data.admin.result;
+                    else if (data.result) result = data.result;
 
                     if (result && result !== lastKnownResult) {
                         lastKnownResult = result;
@@ -484,32 +499,46 @@
 
             if (status === "FREE") {
                 circle.classList.add("status-free");
-                statusWord.style.cssText = "font-size:2rem; font-weight:700;";
+                statusWord.style.cssText = "font-size:2rem; font-weight:700; color: white;";
                 statusWord.innerText = "FREE";
                 label.innerText     = "Room is Available";
+                label.style.color   = "var(--text)";
                 statusSub.innerText = "Live Status";
                 notice.style.display = "none";
 
             } else if (status === "BUSY") {
                 circle.classList.add("status-busy");
-                statusWord.style.cssText = "font-size:2rem; font-weight:700;";
+                statusWord.style.cssText = "font-size:2rem; font-weight:700; color: white;";
                 statusWord.innerText = "BUSY";
                 label.innerText     = "Do Not Disturb";
+                label.style.color   = "var(--text)";
                 statusSub.innerText = "Live Status";
                 notice.style.display = "none";
 
             } else if (status === "OFFLINE") {
                 circle.classList.add("status-offline");
-                statusWord.style.cssText = "font-size:1.4rem; font-weight:400; letter-spacing:0.04em; padding:0 20px;";
+                statusWord.style.cssText = "font-size:1.4rem; font-weight:400; letter-spacing:0.04em; padding:0 20px; color: white;";
                 statusWord.innerText = "Inactive";
                 label.innerText     = "System Unavailable";
+                label.style.color   = "var(--text)";
                 statusSub.innerText = "";
+
+            // NEW TRANSITION RULE: Handles the Kill Switch Active visual feedback
+            } else if (status === "KILLED") {
+                circle.classList.add("status-kill");
+                statusWord.style.cssText = "font-size:1.6rem; font-weight:700; color: black;";
+                statusWord.innerText = "INACTIVE";
+                label.innerText     = "System Deactivated";
+                label.style.color   = "var(--warning)";
+                statusSub.innerText = "Kill Switch Active";
+                notice.style.display = "none";
 
             } else {
                 circle.classList.add("status-loading");
-                statusWord.style.cssText = "font-size:2rem; font-weight:700;";
+                statusWord.style.cssText = "font-size:2rem; font-weight:700; color: white;";
                 statusWord.innerText = "...";
                 label.innerText     = "Please wait...";
+                label.style.color   = "var(--text)";
                 statusSub.innerText = "";
             }
         }
@@ -520,9 +549,8 @@
             notice.style.display = "block";
         }
 
-        // Fix to handle background text cleanly
         function setLog(msg, state) {
-            if (msg.includes("KEEP_ALIVE")) return; 
+            if (msg && msg.includes("KEEP_ALIVE")) return; 
             logBox.innerText = msg;
             logBox.className = "";
             if (state === "error") logBox.classList.add("log-error");
@@ -533,7 +561,6 @@
             document.querySelectorAll("#admin-panel button").forEach(b => b.disabled = state);
         }
 
-        // Input shaking interaction effects
         function shakeInput(id) {
             const el = document.getElementById(id);
             el.classList.add("input-error");
@@ -554,7 +581,6 @@
 
         function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-        // --- SAFETY CATCH: BROWSER CLOSED ---
         window.addEventListener("beforeunload", () => {
             if (isWaiting) {
                 const key = document.getElementById("adminKey").value.trim();
