@@ -204,17 +204,7 @@
     <script>
 
         // ============================================================
-        //
-        //   ██████╗ ██████╗ ███╗   ██╗███████╗██╗ ██████╗ 
-        //  ██╔════╝██╔═══██╗████╗  ██║██╔════╝██║██╔════╝ 
-        //  ██║     ██║   ██║██╔██╗ ██║█████╗  ██║██║  ███╗
-        //  ██║     ██║   ██║██║╚██╗██║██╔══╝  ██║██║   ██║
-        //  ╚██████╗╚██████╔╝██║ ╚████║██║     ██║╚██████╔╝
-        //   ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝ ╚═════╝ 
-        //
-        //  CHANGE THESE VALUES TO CONFIGURE YOUR SYSTEM.
-        //  DO NOT SHARE THESE WITH ANYONE.
-        //
+        // Configuration
         // ============================================================
 
         const RENDER_URL                = "https://occupancy-wall.onrender.com";
@@ -222,7 +212,7 @@
         const OFFLINE_THRESHOLD_SECONDS = 30;
 
         // ============================================================
-        //  END OF CONFIG
+        // END OF CONFIG
         // ============================================================
 
         document.title = ROOM_NAME;
@@ -246,8 +236,8 @@
         let lastKnownStatus  = null;
         let firstPoll        = true;
         let staleCount       = 0;
-        let prevHeartbeat    = -1;  // copies heartbeat every 3 seconds
-        let currHeartbeat    = -1;  // latest heartbeat from server
+        let prevHeartbeat    = -1;  
+        let currHeartbeat    = -1;  
 
         // --- PUBLIC STATUS WATCHER ---
         setInterval(async () => {
@@ -256,20 +246,22 @@
                 if (!response.ok) throw new Error("Bad response");
 
                 const data = await response.json();
-                const currentStatus = data.roomStatus || "UNKNOWN";
+                
+                // FIX: Look up the nested Kill switch configuration value
+                const isKilled = data.admin && (data.admin["Kill switch"] === true || data.admin["Kill switch"] === "true");
+                
+                // FIX: If the kill switch is pulled, override status to OFFLINE (renders as "Inactive")
+                const currentStatus = isKilled ? "OFFLINE" : (data.roomStatus || "UNKNOWN");
                 const heartbeat = data.heartbeat || 0;
 
-                // Update current heartbeat
                 currHeartbeat = heartbeat;
 
-                // If currHeartbeat == prevHeartbeat, heartbeat hasn't changed → stale
                 if (currHeartbeat === prevHeartbeat || heartbeat === 0) {
                     staleCount++;
                 } else {
-                    staleCount = 0; // heartbeat changed — device is alive
+                    staleCount = 0; 
                 }
 
-                // After 15 stale checks → go inactive directly, don't throw
                 if (staleCount >= 15) {
                     stopBusyTimer();
                     lastKnownStatus = null;
@@ -280,13 +272,12 @@
                         "The room monitoring system is currently starting up or unreachable. " +
                         "Please check back in a moment."
                     );
-                    return; // stop here, don't process FREE/BUSY
+                    return; 
                 }
 
                 offlineStreak = 0;
                 notice.style.display = "none";
 
-                // On very first poll, just set state without starting timer
                 if (firstPoll) {
                     firstPoll = false;
                     lastKnownStatus = currentStatus;
@@ -297,7 +288,6 @@
                     return;
                 }
 
-                // Status changed — handle transitions
                 if (currentStatus !== lastKnownStatus) {
                     lastKnownStatus = currentStatus;
                     resetStateTimer();
@@ -320,7 +310,7 @@
             }
         }, 2000);
 
-        // --- HEARTBEAT SNAPSHOT (copies every 3 seconds for stale detection) ---
+        // --- HEARTBEAT SNAPSHOT ---
         setInterval(() => {
             prevHeartbeat = currHeartbeat;
         }, 3000);
@@ -346,7 +336,7 @@
             } catch (e) {}
         }, 3000);
 
-        // --- STATE TIMER (resets on every FREE/BUSY change) ---
+        // --- STATE TIMER ---
         function resetStateTimer() {
             clearInterval(timerInterval);
             busyStartTime = Date.now();
@@ -393,7 +383,7 @@
                 setLog("> Connection failed. Check your internet connection.", "error");
             }
 
-            resetCommand(key); // Clear instantly so ESP32 doesn't loop
+            resetCommand(key); 
             setButtonsDisabled(false);
         }
 
@@ -427,7 +417,7 @@
                 setLog("> Connection failed. Check your internet connection.", "error");
             }
 
-            resetCommand(key); // Clear instantly
+            resetCommand(key); 
             setButtonsDisabled(false);
         }
 
@@ -444,8 +434,6 @@
         async function waitForESPResponse(timeoutMs, key) {
             isWaiting = true;
             const start = Date.now();
-
-            // Clear old result first so we don't match a stale one
             lastKnownResult = "";
 
             while (Date.now() - start < timeoutMs) {
@@ -457,13 +445,15 @@
                     if (!res.ok) continue;
 
                     const data   = await res.json();
-                    const result = data.result;
+                    
+                    // FIX: Target data.admin.result because 'result' is nested within 'admin' inside your Firebase database setup
+                    const result = (data.admin && data.admin.result) ? data.admin.result : data.result;
 
                     if (result && result !== lastKnownResult) {
                         lastKnownResult = result;
-                        const isErr = result.includes("ERROR") || result.includes("Error") || result.includes("WRONG");
+                        const isErr = typeof result === "string" && (result.includes("ERROR") || result.includes("Error") || result.includes("WRONG"));
                         setLog("> " + result, isErr ? "error" : "normal");
-                        if (result.includes("WRONG KEY")) shakeInput("adminKey");
+                        if (typeof result === "string" && result.includes("WRONG KEY")) shakeInput("adminKey");
                         isWaiting = false;
                         return;
                     }
@@ -530,7 +520,9 @@
             notice.style.display = "block";
         }
 
+        // Fix to handle background text cleanly
         function setLog(msg, state) {
+            if (msg.includes("KEEP_ALIVE")) return; 
             logBox.innerText = msg;
             logBox.className = "";
             if (state === "error") logBox.classList.add("log-error");
@@ -541,6 +533,7 @@
             document.querySelectorAll("#admin-panel button").forEach(b => b.disabled = state);
         }
 
+        // Input shaking interaction effects
         function shakeInput(id) {
             const el = document.getElementById(id);
             el.classList.add("input-error");
