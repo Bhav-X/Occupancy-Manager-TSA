@@ -4,9 +4,140 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Room Monitor</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+
     <style>
-        /* ... (Keep your original styles here) ... */
-        /* Ensuring console-log visibility within admin panel */
+        :root {
+            --primary: #2563eb;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #22c55e;
+            --offline: #4b5563;
+            --bg: #f3f4f6;
+            --card: #ffffff;
+            --text: #1f2937;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            color: var(--text);
+        }
+
+        header {
+            width: 100%;
+            background: var(--card);
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-sizing: border-box;
+        }
+        h1 { margin: 0; font-size: 1.2rem; }
+
+        #admin-toggle {
+            background: none; border: none; font-size: 1.5rem; cursor: pointer; opacity: 0.5;
+        }
+
+        .status-container {
+            margin-top: 40px;
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .status-circle {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            margin: 0 auto 12px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transition: background 0.3s ease, box-shadow 0.3s ease;
+            cursor: default;
+            box-sizing: border-box;
+        }
+
+        .status-free    { background: var(--success); box-shadow: 0 0 30px rgba(34, 197, 94, 0.4); }
+        .status-busy    { background: var(--danger);  box-shadow: 0 0 30px rgba(239, 68, 68, 0.4); animation: pulse 2s infinite; }
+        .status-offline { background: var(--offline); box-shadow: none; opacity: 0.8; }
+        .status-loading { background: #9ca3af; }
+
+        @keyframes pulse {
+            0%   { transform: scale(1); }
+            50%  { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        #busy-timer {
+            font-size: 0.75rem;
+            font-weight: 400;
+            color: #6b7280;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+            min-height: 18px;
+        }
+
+        .status-text { font-size: 1.5rem; font-weight: 700; margin-bottom: 5px; }
+        .sub-text    { color: #6b7280; font-size: 0.9rem; }
+        #heartbeat-debug { font-size: 0.7rem; color: #9ca3af; margin-top: 10px; min-height: 16px; }
+
+        #system-notice {
+            display: none;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-top: 20px;
+            width: 90%;
+            max-width: 400px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        #system-notice .notice-title { font-weight: 700; font-size: 0.95rem; color: #9a3412; margin-bottom: 6px; }
+        #system-notice .notice-body  { font-size: 0.82rem; color: #7c2d12; line-height: 1.5; }
+
+        #admin-panel {
+            display: none;
+            background: var(--card);
+            width: 90%;
+            max-width: 400px;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-top: 30px;
+            margin-bottom: 50px;
+            box-sizing: border-box;
+        }
+
+        .admin-header { font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        input.input-error { border-color: var(--danger); }
+        .grid-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .delete-group { display: flex; gap: 5px; margin-bottom: 10px; }
+        .delete-group input { margin-bottom: 0; width: 30%; }
+        .delete-group button { width: 70%; }
+
+        button { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; transition: transform 0.1s; font-family: 'Inter', sans-serif; }
+        button:active   { transform: scale(0.98); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .btn-blue   { background-color: var(--primary); }
+        .btn-green  { background-color: var(--success); }
+        .btn-orange { background-color: var(--warning); color: black; }
+        .btn-red    { background-color: var(--danger); }
+        .btn-grey   { background-color: #6b7280; }
+
         #console-log {
             margin-top: 15px;
             background: #1e1e1e;
@@ -24,6 +155,7 @@
     </style>
 </head>
 <body>
+
     <header>
         <h1>Smart Room Monitor</h1>
         <button id="admin-toggle" onclick="toggleAdmin()">🔒</button>
@@ -70,12 +202,250 @@
     </div>
 
     <script>
-        // ... (Keep your original logic) ...
 
-        // Updated waitForESPResponse function to ensure logs appear in console-log
+        // ============================================================
+        //
+        //   ██████╗ ██████╗ ███╗   ██╗███████╗██╗ ██████╗ 
+        //  ██╔════╝██╔═══██╗████╗  ██║██╔════╝██║██╔════╝ 
+        //  ██║     ██║   ██║██╔██╗ ██║█████╗  ██║██║  ███╗
+        //  ██║     ██║   ██║██║╚██╗██║██╔══╝  ██║██║   ██║
+        //  ╚██████╗╚██████╔╝██║ ╚████║██║     ██║╚██████╔╝
+        //   ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝ ╚═════╝ 
+        //
+        //  CHANGE THESE VALUES TO CONFIGURE YOUR SYSTEM.
+        //  DO NOT SHARE THESE WITH ANYONE.
+        //
+        // ============================================================
+
+        const RENDER_URL                = "https://occupancy-wall.onrender.com";
+        const ROOM_NAME                 = "Smart Room Monitor";
+        const OFFLINE_THRESHOLD_SECONDS = 30;
+
+        // ============================================================
+        //  END OF CONFIG
+        // ============================================================
+
+        document.title = ROOM_NAME;
+        document.querySelector("h1").innerText = ROOM_NAME;
+
+        const circle     = document.getElementById("status-indicator");
+        const statusWord = document.getElementById("status-word");
+        const busyTimer  = document.getElementById("busy-timer");
+        const label      = document.getElementById("status-label");
+        const statusSub  = document.getElementById("status-sub");
+        const debugText  = document.getElementById("heartbeat-debug");
+        const logBox     = document.getElementById("console-log");
+        const notice     = document.getElementById("system-notice");
+        const noticeBody = document.getElementById("notice-body");
+
+        let lastKnownResult  = "";
+        let isWaiting        = false;
+        let offlineStreak    = 0;
+        let busyStartTime    = null;
+        let timerInterval    = null;
+        let lastKnownStatus  = null;
+        let firstPoll        = true;
+        let staleCount       = 0;
+        let prevHeartbeat    = -1;  // copies heartbeat every 3 seconds
+        let currHeartbeat    = -1;  // latest heartbeat from server
+
+        // --- PUBLIC STATUS WATCHER ---
+        setInterval(async () => {
+            try {
+                const response = await fetch(`${RENDER_URL}/api/public-status`);
+                if (!response.ok) throw new Error("Bad response");
+
+                const data = await response.json();
+                const currentStatus = data.roomStatus || "UNKNOWN";
+                const heartbeat = data.heartbeat || 0;
+
+                // Update current heartbeat
+                currHeartbeat = heartbeat;
+
+                // If currHeartbeat == prevHeartbeat, heartbeat hasn't changed → stale
+                if (currHeartbeat === prevHeartbeat || heartbeat === 0) {
+                    staleCount++;
+                } else {
+                    staleCount = 0; // heartbeat changed — device is alive
+                }
+
+                // After 15 stale checks → go inactive directly, don't throw
+                if (staleCount >= 15) {
+                    stopBusyTimer();
+                    lastKnownStatus = null;
+                    firstPoll = true;
+                    updateDisplay("OFFLINE");
+                    debugText.innerText = "";
+                    showNotice(
+                        "The room monitoring system is currently starting up or unreachable. " +
+                        "Please check back in a moment."
+                    );
+                    return; // stop here, don't process FREE/BUSY
+                }
+
+                offlineStreak = 0;
+                notice.style.display = "none";
+
+                // On very first poll, just set state without starting timer
+                if (firstPoll) {
+                    firstPoll = false;
+                    lastKnownStatus = currentStatus;
+                    if (currentStatus === "FREE" || currentStatus === "BUSY") {
+                        resetStateTimer();
+                    }
+                    updateDisplay(currentStatus);
+                    return;
+                }
+
+                // Status changed — handle transitions
+                if (currentStatus !== lastKnownStatus) {
+                    lastKnownStatus = currentStatus;
+                    resetStateTimer();
+                    updateDisplay(currentStatus);
+                }
+
+            } catch (err) {
+                offlineStreak++;
+                if (offlineStreak >= 2) {
+                    stopBusyTimer();
+                    lastKnownStatus = null;
+                    firstPoll = true;
+                    updateDisplay("OFFLINE");
+                    debugText.innerText = "";
+                    showNotice(
+                        "The room monitoring system is currently starting up or unreachable. " +
+                        "Please check back in a moment."
+                    );
+                }
+            }
+        }, 2000);
+
+        // --- HEARTBEAT SNAPSHOT (copies every 3 seconds for stale detection) ---
+        setInterval(() => {
+            prevHeartbeat = currHeartbeat;
+        }, 3000);
+
+        // --- HEARTBEAT WATCHER ---
+        setInterval(async () => {
+            const key = document.getElementById("adminKey").value.trim();
+            if (!key || document.getElementById("admin-panel").style.display !== "block") return;
+
+            try {
+                const res = await fetch(`${RENDER_URL}/api/result`, {
+                    headers: { "Authorization": `Bearer ${key}` }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+
+                if (data.heartbeat) {
+                    const secondsAgo = Math.floor((Date.now() - data.heartbeat) / 1000);
+                    debugText.innerText = secondsAgo > OFFLINE_THRESHOLD_SECONDS
+                        ? "⚠ Scanner device is not responding"
+                        : `Last signal: ${secondsAgo}s ago`;
+                }
+            } catch (e) {}
+        }, 3000);
+
+        // --- STATE TIMER (resets on every FREE/BUSY change) ---
+        function resetStateTimer() {
+            clearInterval(timerInterval);
+            busyStartTime = Date.now();
+            timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - busyStartTime) / 1000);
+                const mins = Math.floor(elapsed / 60);
+                const secs = elapsed % 60;
+                busyTimer.innerText = `${String(mins).padStart(2,"0")}:${String(secs).padStart(2,"0")}`;
+            }, 1000);
+        }
+
+        // --- STOP STATE TIMER ---
+        function stopBusyTimer() {
+            clearInterval(timerInterval);
+            busyStartTime = null;
+            busyTimer.innerText = "";
+        }
+
+        // --- COMMAND SENDER ---
+        async function runCmd(commandString) {
+            const key = document.getElementById("adminKey").value.trim();
+            if (!key)      { shakeInput("adminKey"); setLog("> Please enter the admin key first.", "error"); return; }
+            if (isWaiting) { setLog("> Please wait for the current action to finish.", "warn"); return; }
+
+            setLog("> Sending command...", "normal");
+            setButtonsDisabled(true);
+
+            try {
+                const res = await fetch(`${RENDER_URL}/api/command`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ cmd: commandString, key: key })
+                });
+
+                if (res.status === 403) { shakeInput("adminKey"); setLog("> Access Denied. Wrong admin key.", "error"); setButtonsDisabled(false); return; }
+                if (res.status === 429) { setLog("> Too many requests. Please wait a moment.", "warn"); setButtonsDisabled(false); return; }
+                if (!res.ok)            { setLog("> Could not reach the server. Please try again shortly.", "error"); setButtonsDisabled(false); return; }
+
+                setLog("> Command sent. Waiting for device...", "normal");
+                const timeout = (commandString === "ENROLL") ? 35000 : 8000;
+                await waitForESPResponse(timeout, key);
+
+            } catch (err) {
+                setLog("> Connection failed. Check your internet connection.", "error");
+            }
+
+            resetCommand(key); // Clear instantly so ESP32 doesn't loop
+            setButtonsDisabled(false);
+        }
+
+        // --- DELETE SPECIFIC ID ---
+        async function deleteSpecificId() {
+            const key   = document.getElementById("adminKey").value.trim();
+            const idNum = document.getElementById("deleteIdInput").value.trim();
+
+            if (!key)                          { shakeInput("adminKey");      setLog("> Please enter the admin key first.", "error");  return; }
+            if (!idNum || parseInt(idNum) < 1) { shakeInput("deleteIdInput"); setLog("> Please enter a valid ID number.", "error");    return; }
+            if (isWaiting)                     {                               setLog("> Please wait for current action.", "warn");    return; }
+
+            setLog(`> Deleting ID ${idNum}...`, "normal");
+            setButtonsDisabled(true);
+
+            try {
+                const res = await fetch(`${RENDER_URL}/api/command`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ cmd: "DELETE_ID", id: idNum, key: key })
+                });
+
+                if (res.status === 403) { shakeInput("adminKey"); setLog("> Access Denied. Wrong admin key.", "error"); setButtonsDisabled(false); return; }
+                if (res.status === 429) { setLog("> Too many requests. Please wait a moment.", "warn"); setButtonsDisabled(false); return; }
+                if (!res.ok)            { setLog("> Could not reach the server. Please try again shortly.", "error"); setButtonsDisabled(false); return; }
+
+                setLog("> Command sent. Waiting for device...", "normal");
+                await waitForESPResponse(8000, key);
+
+            } catch (err) {
+                setLog("> Connection failed. Check your internet connection.", "error");
+            }
+
+            resetCommand(key); // Clear instantly
+            setButtonsDisabled(false);
+        }
+
+        // --- DELETE ALL DOUBLE CONFIRMATION ---
+        async function confirmDeleteAll() {
+            const first = confirm("⚠️ This will permanently delete ALL fingerprints. Are you sure?");
+            if (!first) return;
+            const second = prompt("Type DELETE to confirm:");
+            if (second !== "DELETE") { setLog("> Cancelled. Nothing was deleted.", "warn"); return; }
+            runCmd("DELETE_ALL");
+        }
+
+        // --- WAIT FOR ESP32 RESPONSE ---
         async function waitForESPResponse(timeoutMs, key) {
             isWaiting = true;
             const start = Date.now();
+
+            // Clear old result first so we don't match a stale one
             lastKnownResult = "";
 
             while (Date.now() - start < timeoutMs) {
@@ -86,13 +456,12 @@
                     });
                     if (!res.ok) continue;
 
-                    const data = await res.json();
-                    // Check for result in root or nested admin object
-                    const result = data.result || (data.admin ? data.admin.result : null);
+                    const data   = await res.json();
+                    const result = data.result;
 
-                    if (result && result !== "0" && result !== lastKnownResult) {
+                    if (result && result !== lastKnownResult) {
                         lastKnownResult = result;
-                        const isErr = result.toLowerCase().includes("error") || result.toLowerCase().includes("wrong");
+                        const isErr = result.includes("ERROR") || result.includes("Error") || result.includes("WRONG");
                         setLog("> " + result, isErr ? "error" : "normal");
                         if (result.includes("WRONG KEY")) shakeInput("adminKey");
                         isWaiting = false;
@@ -100,11 +469,112 @@
                     }
                 } catch (e) {}
             }
+
             setLog("> The device did not respond. It may be offline or busy.", "warn");
             isWaiting = false;
         }
 
-        // ... (Rest of your functions) ...
+        // --- RESET COMMAND ---
+        async function resetCommand(key) {
+            try {
+                await fetch(`${RENDER_URL}/api/command`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ cmd: "0", key: key })
+                });
+            } catch (e) {}
+        }
+
+        // --- KEEP RENDER AWAKE ---
+        setInterval(() => { fetch(`${RENDER_URL}/`).catch(() => {}); }, 10 * 60 * 1000);
+
+        // --- UPDATE DISPLAY ---
+        function updateDisplay(status) {
+            circle.className = "status-circle";
+
+            if (status === "FREE") {
+                circle.classList.add("status-free");
+                statusWord.style.cssText = "font-size:2rem; font-weight:700;";
+                statusWord.innerText = "FREE";
+                label.innerText     = "Room is Available";
+                statusSub.innerText = "Live Status";
+                notice.style.display = "none";
+
+            } else if (status === "BUSY") {
+                circle.classList.add("status-busy");
+                statusWord.style.cssText = "font-size:2rem; font-weight:700;";
+                statusWord.innerText = "BUSY";
+                label.innerText     = "Do Not Disturb";
+                statusSub.innerText = "Live Status";
+                notice.style.display = "none";
+
+            } else if (status === "OFFLINE") {
+                circle.classList.add("status-offline");
+                statusWord.style.cssText = "font-size:1.4rem; font-weight:400; letter-spacing:0.04em; padding:0 20px;";
+                statusWord.innerText = "Inactive";
+                label.innerText     = "System Unavailable";
+                statusSub.innerText = "";
+
+            } else {
+                circle.classList.add("status-loading");
+                statusWord.style.cssText = "font-size:2rem; font-weight:700;";
+                statusWord.innerText = "...";
+                label.innerText     = "Please wait...";
+                statusSub.innerText = "";
+            }
+        }
+
+        // --- HELPERS ---
+        function showNotice(msg) {
+            noticeBody.innerText = msg;
+            notice.style.display = "block";
+        }
+
+        function setLog(msg, state) {
+            logBox.innerText = msg;
+            logBox.className = "";
+            if (state === "error") logBox.classList.add("log-error");
+            if (state === "warn")  logBox.classList.add("log-warn");
+        }
+
+        function setButtonsDisabled(state) {
+            document.querySelectorAll("#admin-panel button").forEach(b => b.disabled = state);
+        }
+
+        function shakeInput(id) {
+            const el = document.getElementById(id);
+            el.classList.add("input-error");
+            el.animate([
+                { transform: "translateX(0)" },
+                { transform: "translateX(-6px)" },
+                { transform: "translateX(6px)" },
+                { transform: "translateX(-4px)" },
+                { transform: "translateX(0)" }
+            ], { duration: 300, easing: "ease-out" });
+            setTimeout(() => el.classList.remove("input-error"), 2000);
+        }
+
+        function toggleAdmin() {
+            const panel = document.getElementById("admin-panel");
+            panel.style.display = (panel.style.display === "block") ? "none" : "block";
+        }
+
+        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+        // --- SAFETY CATCH: BROWSER CLOSED ---
+        window.addEventListener("beforeunload", () => {
+            if (isWaiting) {
+                const key = document.getElementById("adminKey").value.trim();
+                const blob = new Blob([JSON.stringify({ cmd: "0", key: key })], { type: 'application/json' });
+                navigator.sendBeacon(`${RENDER_URL}/api/command`, blob);
+            }
+        });
+
     </script>
 </body>
 </html>
+
+
+
+
+
