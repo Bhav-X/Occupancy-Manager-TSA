@@ -436,11 +436,15 @@
         // --- SMART ESP LOG MIRROR ---
         async function waitForESPResponse(timeoutMs, key, cmd) {
             isWaiting = true;
-            const start = Date.now();
             let gotAnyMessage = false;
+            let checks = 0;
+            const maxChecksForFirstMessage = 10; // 10 strict loops * 500ms sleep = guaranteed 5+ seconds
+            const totalLoops = Math.floor(timeoutMs / 500);
 
-            while (Date.now() - start < timeoutMs) {
-                await sleep(500); // Check every 0.5 seconds to capture fast back-to-back logs
+            for (let i = 0; i < totalLoops; i++) {
+                await sleep(500); 
+                checks++;
+
                 try {
                     const res = await fetch(`${RENDER_URL}/api/result`, {
                         headers: { "Authorization": `Bearer ${key}` }
@@ -458,11 +462,10 @@
                         const resUpper = result.toUpperCase();
                         const isErr = resUpper.includes("ERROR") || resUpper.includes("WRONG") || resUpper.includes("FAIL");
                         
-                        // Directly copy whatever text the ESP states
                         setLog("> " + result, isErr ? "error" : "normal");
                         if (resUpper.includes("WRONG KEY")) shakeInput("adminKey");
                         
-                        // 2> The function has finished its job when it sees "System ready", "System online", or an error
+                        // Break if we hit a terminal success or error string
                         if (resUpper.includes("SYSTEM READY") || resUpper.includes("SYSTEM ONLINE") || isErr) {
                             break; 
                         }
@@ -474,15 +477,14 @@
                     }
                 } catch (e) {}
 
-                // 1> Within 5 seconds, if absolutely no logs are received, stop and throw the default error
-                if (!gotAnyMessage && (Date.now() - start >= 5000)) {
+                // If 10 full loops have passed and NO message has arrived yet, kill it.
+                if (!gotAnyMessage && checks >= maxChecksForFirstMessage) {
                     setLog("> The device did not respond. It may be offline or busy.", "warn");
                     break;
                 }
             }
 
             isWaiting = false;
-            // Removed the old 3.5s automatic reset. The last message printed stays there forever.
         }
 
         async function resetCommand(key) {
