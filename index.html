@@ -374,7 +374,11 @@
                 if (!res.ok)            { setLog("> Could not reach the server. Please try again shortly.", "error"); setButtonsDisabled(false); return; }
 
                 setLog("> Command sent. Waiting for device...", "normal");
-                const timeout = (commandString === "ENROLL") ? 35000 : 8000;
+                
+                // ============================================================
+                // ⏱️ TIMER CONTROL: Sets response limit to exactly 7 seconds (7000ms)
+                // =============================================================
+                const timeout = 7000; 
                 await waitForESPResponse(timeout, key, commandString);
 
             } catch (err) {
@@ -392,7 +396,7 @@
 
             if (!key)                          { shakeInput("adminKey");      setLog("> Please enter the admin key first.", "error");  return; }
             if (!idNum || parseInt(idNum) < 1) { shakeInput("deleteIdInput"); setLog("> Please enter a valid ID number.", "error");    return; }
-            if (isWaiting)                     {                              setLog("> Please wait for current action.", "warn");    return; }
+            if (isWaiting)                     {                               setLog("> Please wait for current action.", "warn");    return; }
 
             setLog(`> Deleting ID ${idNum}...`, "normal");
             setButtonsDisabled(true);
@@ -415,7 +419,11 @@
                 if (!res.ok)            { setLog("> Could not reach the server. Please try again shortly.", "error"); setButtonsDisabled(false); return; }
 
                 setLog("> Command sent. Waiting for device...", "normal");
-                await waitForESPResponse(8000, key, "DELETE_ID");
+                
+                // ============================================================
+                // ⏱️ TIMER CONTROL: Sets delete response limit to exactly 7 seconds (7000ms)
+                // =============================================================
+                await waitForESPResponse(7000, key, "DELETE_ID");
 
             } catch (err) {
                 setLog("> Connection failed. Check your internet connection.", "error");
@@ -437,13 +445,10 @@
         async function waitForESPResponse(timeoutMs, key, cmd) {
             isWaiting = true;
             let gotAnyMessage = false;
-            let checks = 0;
-            const maxChecksForFirstMessage = 10; // 10 strict loops * 500ms sleep = guaranteed 5+ seconds
             const totalLoops = Math.floor(timeoutMs / 500);
 
             for (let i = 0; i < totalLoops; i++) {
                 await sleep(500); 
-                checks++;
 
                 try {
                     const res = await fetch(`${RENDER_URL}/api/result`, {
@@ -454,7 +459,6 @@
                     const data   = await res.json();
                     const result = data.result;
 
-                    // If a NEW message arrives from the ESP, copy it immediately
                     if (result && result !== lastKnownResult) {
                         lastKnownResult = result;
                         gotAnyMessage = true;
@@ -465,25 +469,24 @@
                         setLog("> " + result, isErr ? "error" : "normal");
                         if (resUpper.includes("WRONG KEY")) shakeInput("adminKey");
                         
-                        // Break if we hit a terminal success or error string
                         if (resUpper.includes("SYSTEM READY") || resUpper.includes("SYSTEM ONLINE") || isErr) {
                             break; 
                         }
 
-                        // Also exit if ENROLL successfully wraps up
                         if (cmd === "ENROLL" && (resUpper.includes("STORED") || resUpper.includes("SAVED"))) {
                             break;
                         }
                     }
                 } catch (e) {}
-
-                // If 10 full loops have passed and NO message has arrived yet, kill it.
-                if (!gotAnyMessage && checks >= maxChecksForFirstMessage) {
-                    setLog("> The device did not respond. It may be offline or busy.", "warn");
-                    break;
-                }
             }
 
+            // ============================================================
+            // ⏱️ RACE SITUATION FIX: Removed early 5-sec execution drop.
+            // If the loop runs its full course without an ESP message update, throw error.
+            // ============================================================
+            if (!gotAnyMessage) {
+                setLog("> The device did not respond. It may be offline or busy.", "warn");
+            }
             isWaiting = false;
         }
 
