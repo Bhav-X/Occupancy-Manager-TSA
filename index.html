@@ -433,15 +433,14 @@
             runCmd("DELETE_ALL");
         }
 
-        // --- SMART ESP RESPONSE LISTENER ---
+        // --- SMART ESP LOG MIRROR ---
         async function waitForESPResponse(timeoutMs, key, cmd) {
             isWaiting = true;
             const start = Date.now();
             let gotAnyMessage = false;
-            let lastMessageTime = Date.now();
 
             while (Date.now() - start < timeoutMs) {
-                await sleep(1000);
+                await sleep(500); // Check every 0.5 seconds to capture fast back-to-back logs
                 try {
                     const res = await fetch(`${RENDER_URL}/api/result`, {
                         headers: { "Authorization": `Bearer ${key}` }
@@ -451,46 +450,39 @@
                     const data   = await res.json();
                     const result = data.result;
 
-                    // If a NEW message arrives from the ESP
+                    // If a NEW message arrives from the ESP, copy it immediately
                     if (result && result !== lastKnownResult) {
                         lastKnownResult = result;
                         gotAnyMessage = true;
-                        lastMessageTime = Date.now();
                         
                         const resUpper = result.toUpperCase();
-                        const isErr = resUpper.includes("ERROR") || resUpper.includes("WRONG") || resUpper.includes("FAIL") || resUpper.includes("MATCH");
+                        const isErr = resUpper.includes("ERROR") || resUpper.includes("WRONG") || resUpper.includes("FAIL");
                         
+                        // Directly copy whatever text the ESP states
                         setLog("> " + result, isErr ? "error" : "normal");
-                        
                         if (resUpper.includes("WRONG KEY")) shakeInput("adminKey");
                         
-                        // Break immediately if it's explicitly a terminal error so the user doesn't have to wait
-                        if (isErr) break;
-                        
-                        // For ENROLL, break if it explicitly states it succeeded
+                        // 2> The function has finished its job when it sees "System ready", "System online", or an error
+                        if (resUpper.includes("SYSTEM READY") || resUpper.includes("SYSTEM ONLINE") || isErr) {
+                            break; 
+                        }
+
+                        // Also exit if ENROLL successfully wraps up
                         if (cmd === "ENROLL" && (resUpper.includes("STORED") || resUpper.includes("SAVED"))) {
                             break;
                         }
                     }
-
-                    // For quick commands, assume the ESP is fully done if it goes silent for 2.5 seconds after a message
-                    if (cmd !== "ENROLL" && gotAnyMessage && (Date.now() - lastMessageTime > 2500)) {
-                        break;
-                    }
-
                 } catch (e) {}
-            }
 
-            if (!gotAnyMessage) {
-                setLog("> The device did not respond. It may be offline or busy.", "warn");
+                // 1> Within 2 seconds, if absolutely no logs are received, stop and throw the default error
+                if (!gotAnyMessage && (Date.now() - start >= 2000)) {
+                    setLog("> The device did not respond. It may be offline or busy.", "warn");
+                    break;
+                }
             }
 
             isWaiting = false;
-
-            // Hold the final log message for 3.5s before resetting to System Ready
-            setTimeout(() => {
-                if (!isWaiting) setLog("> System Ready.", "normal");
-            }, 3500);
+            // Removed the old 3.5s automatic reset. The last message printed stays there forever.
         }
 
         async function resetCommand(key) {
