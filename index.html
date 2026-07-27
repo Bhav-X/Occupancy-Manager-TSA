@@ -202,17 +202,41 @@
     </div>
 
     <script>
-
         // ============================================================
-        //  CHANGE THESE VALUES TO CONFIGURE YOUR SYSTEM.
+        //  CONFIGURATION
         // ============================================================
-
         const RENDER_URL                = "https://occupancy-wall.onrender.com";
         const ROOM_NAME                 = "Smart Room Monitor";
         const OFFLINE_THRESHOLD_SECONDS = 30;
 
-        // ============================================================
-        //  END OF CONFIG
+        // Command codes sent to ESP32 (3 digits protect against data corruption)
+        const CMD_DICT = {
+            CLEAR: "000",
+            STATUS_CHANGE: "101",
+            ENROLL: "102",
+            CHECK_COUNT: "103",
+            DELETE_ID: "104",
+            DELETE_ALL: "105",
+            REBOOT: "106"
+        };
+
+        // Responses received from ESP32 -> Translated to UI
+        const RESP_DICT = {
+            "100": "System Ready.",
+            "200": "Command received, starting process...",
+            "201": "Place finger on sensor...",
+            "202": "Remove finger...",
+            "203": "Place same finger again...",
+            "204": "Fingerprint stored successfully!",
+            "205": "ID Deleted successfully.",
+            "206": "All IDs cleared.",
+            "301": "Count of people registered: {val}",
+            "400": "Process Failed / Error",
+            "401": "Error: Sensor not found",
+            "402": "Error: Bad read / imaging error",
+            "403": "Error: Prints did not match",
+            "404": "Error: Storage full"
+        };
         // ============================================================
 
         document.title = ROOM_NAME;
@@ -297,17 +321,12 @@
                     firstPoll = true;
                     updateDisplay("OFFLINE");
                     debugText.innerText = "";
-                    showNotice(
-                        "The room monitoring system is currently starting up or unreachable. " +
-                        "Please check back in a moment."
-                    );
+                    showNotice("System unavailable. Please check back in a moment.");
                 }
             }
         }, 2000);
 
-        setInterval(() => {
-            prevHeartbeat = currHeartbeat;
-        }, 3000);
+        setInterval(() => { prevHeartbeat = currHeartbeat; }, 3000);
 
         // --- HEARTBEAT WATCHER ---
         setInterval(async () => {
@@ -322,9 +341,7 @@
                 const data = await res.json();
 
                 if (data.heartbeat) {
-                    debugText.innerText = (staleCount >= 5)
-                        ? "⚠ Scanner device is not responding"
-                        : ""; 
+                    debugText.innerText = (staleCount >= 5) ? "⚠ Scanner device is not responding" : ""; 
                 }
             } catch (e) {}
         }, 3000);
@@ -353,6 +370,8 @@
             if (!key)      { shakeInput("adminKey"); setLog("> Please enter the admin key first.", "error"); return; }
             if (isWaiting) { setLog("> Please wait for the current action to finish.", "warn"); return; }
 
+            const cmdCode = CMD_DICT[commandString] || CMD_DICT.CLEAR;
+
             setLog("> Sending command...", "normal");
             setButtonsDisabled(true);
 
@@ -366,22 +385,20 @@
                 const res = await fetch(`${RENDER_URL}/api/command`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ cmd: commandString, key: key })
+                    body: JSON.stringify({ cmd: cmdCode, key: key })
                 });
 
                 if (res.status === 403) { shakeInput("adminKey"); setLog("> Access Denied. Wrong admin key.", "error"); setButtonsDisabled(false); return; }
                 if (res.status === 429) { setLog("> Too many requests. Please wait a moment.", "warn"); setButtonsDisabled(false); return; }
                 if (!res.ok)            { setLog("> Could not reach the server. Please try again shortly.", "error"); setButtonsDisabled(false); return; }
 
-                setLog("> Command sent. Waiting for device...", "normal");
+                // The server will auto-clear the command after 7 seconds. UI just watches for logs now.
                 const timeout = (commandString === "ENROLL") ? 35000 : 8000;
-                await waitForESPResponse(timeout, key, commandString);
+                await waitForESPResponse(timeout, key);
 
             } catch (err) {
                 setLog("> Connection failed. Check your internet connection.", "error");
             }
-
-            resetCommand(key);
             setButtonsDisabled(false);
         }
 
@@ -407,21 +424,18 @@
                 const res = await fetch(`${RENDER_URL}/api/command`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ cmd: "DELETE_ID", id: idNum, key: key })
+                    body: JSON.stringify({ cmd: CMD_DICT.DELETE_ID, id: parseInt(idNum), key: key })
                 });
 
                 if (res.status === 403) { shakeInput("adminKey"); setLog("> Access Denied. Wrong admin key.", "error"); setButtonsDisabled(false); return; }
                 if (res.status === 429) { setLog("> Too many requests. Please wait a moment.", "warn"); setButtonsDisabled(false); return; }
                 if (!res.ok)            { setLog("> Could not reach the server. Please try again shortly.", "error"); setButtonsDisabled(false); return; }
 
-                setLog("> Command sent. Waiting for device...", "normal");
-                await waitForESPResponse(8000, key, "DELETE_ID");
+                await waitForESPResponse(8000, key);
 
             } catch (err) {
                 setLog("> Connection failed. Check your internet connection.", "error");
             }
-
-            resetCommand(key); 
             setButtonsDisabled(false);
         }
 
@@ -433,12 +447,12 @@
             runCmd("DELETE_ALL");
         }
 
-        // --- SMART ESP LOG MIRROR ---
-        async function waitForESPResponse(timeoutMs, key, cmd) {
+        // --- SMART ESP LOG HANDLER ---
+        async function waitForESPResponse(timeoutMs, key) {
             isWaiting = true;
             let gotAnyMessage = false;
             let checks = 0;
-            const maxChecksForFirstMessage = 10; // 10 strict loops * 500ms sleep = guaranteed 5+ seconds
+            const maxChecksForFirstMessage = 14; // 7 seconds (14 checks * 500ms)
             const totalLoops = Math.floor(timeoutMs / 500);
 
             for (let i = 0; i < totalLoops; i++) {
@@ -451,50 +465,59 @@
                     });
                     if (!res.ok) continue;
 
-                    const data   = await res.json();
-                    const result = data.result;
+                    const data = await res.json();
+                    let rawResult = data.result;
 
-                    // If a NEW message arrives from the ESP, copy it immediately
-                    if (result && result !== lastKnownResult) {
-                        lastKnownResult = result;
+                    if (rawResult && rawResult !== lastKnownResult) {
+                        lastKnownResult = rawResult;
                         gotAnyMessage = true;
                         
-                        const resUpper = result.toUpperCase();
-                        const isErr = resUpper.includes("ERROR") || resUpper.includes("WRONG") || resUpper.includes("FAIL");
-                        
-                        setLog("> " + result, isErr ? "error" : "normal");
-                        if (resUpper.includes("WRONG KEY")) shakeInput("adminKey");
-                        
-                        // Break if we hit a terminal success or error string
-                        if (resUpper.includes("SYSTEM READY") || resUpper.includes("SYSTEM ONLINE") || isErr) {
-                            break; 
+                        let code = rawResult;
+                        let val = "";
+
+                        // Smart Parsing: Supports {"code": "301", "val": 5} OR "301:5" OR "200"
+                        try {
+                            const parsed = JSON.parse(rawResult);
+                            if (parsed && parsed.code) {
+                                code = String(parsed.code);
+                                val  = parsed.val !== undefined ? parsed.val : "";
+                            }
+                        } catch(e) {
+                            if (typeof rawResult === 'string' && rawResult.includes(':')) {
+                                const parts = rawResult.split(':');
+                                code = String(parts[0]).trim();
+                                val  = String(parts[1]).trim();
+                            } else {
+                                code = String(rawResult).trim();
+                            }
                         }
 
-                        // Also exit if ENROLL successfully wraps up
-                        if (cmd === "ENROLL" && (resUpper.includes("STORED") || resUpper.includes("SAVED"))) {
-                            break;
+                        // Translate using dictionary
+                        let translated = RESP_DICT[code];
+                        if (!translated) {
+                            translated = rawResult; // Fallback to raw text if unknown code
+                        } else if (translated.includes("{val}")) {
+                            translated = translated.replace("{val}", val);
+                        }
+                        
+                        const isErr = code.startsWith("4") || translated.toUpperCase().includes("ERROR") || translated.toUpperCase().includes("FAIL");
+                        
+                        setLog("> " + translated, isErr ? "error" : "normal");
+                        
+                        // Break conditions
+                        if (code === "100" || isErr) {
+                            break; 
                         }
                     }
                 } catch (e) {}
 
-                // If 10 full loops have passed and NO message has arrived yet, kill it.
                 if (!gotAnyMessage && checks >= maxChecksForFirstMessage) {
-                    setLog("> The device did not respond. It may be offline or busy.", "warn");
+                    setLog("> The device did not respond within 7 seconds. It may be offline.", "warn");
                     break;
                 }
             }
 
             isWaiting = false;
-        }
-
-        async function resetCommand(key) {
-            try {
-                await fetch(`${RENDER_URL}/api/command`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ cmd: "0", key: key })
-                });
-            } catch (e) {}
         }
 
         setInterval(() => { fetch(`${RENDER_URL}/`).catch(() => {}); }, 10 * 60 * 1000);
@@ -569,15 +592,6 @@
         }
 
         function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-        window.addEventListener("beforeunload", () => {
-            if (isWaiting) {
-                const key = document.getElementById("adminKey").value.trim();
-                const blob = new Blob([JSON.stringify({ cmd: "0", key: key })], { type: 'application/json' });
-                navigator.sendBeacon(`${RENDER_URL}/api/command`, blob);
-            }
-        });
-
     </script>
 </body>
 </html>
