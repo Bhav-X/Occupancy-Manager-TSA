@@ -281,6 +281,8 @@
                     staleCount = 0; 
                 }
 
+                prevHeartbeat = currHeartbeat; // Synchronized update here instead of a separate interval
+
                 if (staleCount >= 15) {
                     stopBusyTimer();
                     lastKnownStatus = null;
@@ -325,8 +327,6 @@
                 }
             }
         }, 2000);
-
-        setInterval(() => { prevHeartbeat = currHeartbeat; }, 3000);
 
         // --- HEARTBEAT WATCHER ---
         setInterval(async () => {
@@ -409,7 +409,7 @@
 
             if (!key)                          { shakeInput("adminKey");      setLog("> Please enter the admin key first.", "error");  return; }
             if (!idNum || parseInt(idNum) < 1) { shakeInput("deleteIdInput"); setLog("> Please enter a valid ID number.", "error");    return; }
-            if (isWaiting)                     {                              setLog("> Please wait for current action.", "warn");    return; }
+            if (isWaiting)                     {                              setLog("> Please wait for current action.", "warn");     return; }
 
             setLog(`> Deleting ID ${idNum}...`, "normal");
             setButtonsDisabled(true);
