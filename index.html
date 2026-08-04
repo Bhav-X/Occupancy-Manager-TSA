@@ -187,9 +187,6 @@
     </section>
 
     <script>
-        // ============================================================
-        //  CONFIGURATION
-        // ============================================================
         const RENDER_URL = "https://occupancy-wall.onrender.com";
         const ROOM_NAME  = "Smart Room Monitor";
 
@@ -199,18 +196,18 @@
         };
 
         const RESP_DICT = {
-            "100": "System Ready.", "200": "Command received, starting process...",
-            "201": "Place finger on sensor...", "202": "Remove finger...",
-            "203": "Place same finger again...", "204": "Fingerprint stored successfully!",
-            "205": "ID Deleted successfully.", "206": "All IDs cleared.",
-            "301": "Count of people registered: {val}", "400": "Process Failed / Error",
-            "401": "Error: Sensor not found", "402": "Error: Bad read / imaging error",
-            "403": "Error: Prints did not match", "404": "Error: Storage full"
+            "100": "System Ready.", 
+            "200": "Command accepted. Awaiting timeline schedule...",
+            "204": "Fingerprint stored successfully as ID #{val}!",
+            "205": "ID #{val} deleted successfully.", 
+            "206": "All IDs cleared.",
+            "301": "Users enrolled: {val}", 
+            "400": "Error: Process Failed",
+            "402": "Error: Bad read / imaging error",
+            "403": "Error: Fingerprints did not match", 
+            "404": "Error: Sensor memory full"
         };
 
-        // ============================================================
-        // DOM Elements Cached
-        // ============================================================
         document.title = ROOM_NAME;
         document.getElementById("header-title").innerText = ROOM_NAME;
 
@@ -229,15 +226,13 @@
             deleteId: document.getElementById("deleteIdInput")
         };
 
-        // State variables
         let state = {
             lastResult: "", isWaiting: false, offlineStreak: 0,
             busyStart: null, timerId: null, lastStatus: null,
-            firstPoll: true, staleCount: 0, prevBeat: -1, currBeat: -1
+            firstPoll: true, staleCount: 0, prevBeat: -1, currBeat: -1,
+            activeTimers: []
         };
 
-        // --- POLLING LOOPS (Optimized to prevent request stacking) ---
-        
         async function pollPublicStatus() {
             try {
                 const response = await fetch(`${RENDER_URL}/api/public-status`);
@@ -264,17 +259,14 @@
                 if (state.firstPoll || currentStatus !== state.lastStatus) {
                     state.lastStatus = currentStatus;
                     state.firstPoll = false;
-                    
-                    if (currentStatus === "FREE" || currentStatus === "BUSY") {
-                        resetStateTimer();
-                    }
+                    if (currentStatus === "FREE" || currentStatus === "BUSY") resetStateTimer();
                     updateDisplay(currentStatus);
                 }
             } catch (err) {
                 state.offlineStreak++;
                 if (state.offlineStreak >= 2) handleOffline("System unavailable. Please check back in a moment.");
             } finally {
-                setTimeout(pollPublicStatus, 2000); // Recursive timeout prevents overlaps
+                setTimeout(pollPublicStatus, 2000);
             }
         }
 
@@ -292,11 +284,10 @@
             setTimeout(pollHeartbeat, 3000);
         }
 
-        // Init Polling Loops
         pollPublicStatus();
         pollHeartbeat();
         setInterval(() => { state.prevBeat = state.currBeat; }, 3000);
-        setInterval(() => { fetch(`${RENDER_URL}/`).catch(() => {}); }, 600000); // Keep-alive ping
+        setInterval(() => { fetch(`${RENDER_URL}/`).catch(() => {}); }, 600000);
 
         function handleOffline(msg) {
             stopBusyTimer();
@@ -307,7 +298,6 @@
             showNotice(msg);
         }
 
-        // --- TIMER LOGIC ---
         function resetStateTimer() {
             clearInterval(state.timerId);
             state.busyStart = Date.now();
@@ -323,8 +313,6 @@
             el.timer.innerText = "";
         }
 
-        // --- API & COMMAND LOGIC ---
-        
         async function sendCommandAPI(cmdCode, extraPayload = {}, timeoutMs = 8000) {
             const key = el.adminKey.value.trim();
             if (!key) { shakeInput("adminKey"); setLog("> Please enter the admin key first.", "error"); return; }
@@ -334,7 +322,6 @@
             setButtonsDisabled(true);
 
             try {
-                // Clear out stale result first
                 const preRes = await fetch(`${RENDER_URL}/api/result`, { headers: { "Authorization": `Bearer ${key}` } });
                 if (preRes.ok) state.lastResult = (await preRes.json()).result || "";
 
@@ -353,9 +340,8 @@
                 if (err.message === "AUTH") { shakeInput("adminKey"); setLog("> Access Denied. Wrong admin key.", "error"); }
                 else if (err.message === "RATE") setLog("> Too many requests. Please wait a moment.", "warn");
                 else setLog("> Connection failed. Check your internet connection.", "error");
+                setButtonsDisabled(false);
             }
-            
-            setButtonsDisabled(false);
         }
 
         function runCmd(commandString) {
@@ -378,7 +364,7 @@
         async function waitForESPResponse(timeoutMs, key) {
             state.isWaiting = true;
             let gotResponse = false;
-            const maxChecks = 14; // 7 secs for initial response
+            const maxChecks = 14; 
             const loops = Math.floor(timeoutMs / 500);
 
             for (let i = 0; i < loops; i++) {
@@ -393,17 +379,19 @@
                     if (rawResult && rawResult !== state.lastResult) {
                         state.lastResult = rawResult;
                         gotResponse = true;
-                        
-                        let code = rawResult, val = "";
 
-                        // Parse string/json variations cleanly
+                        // -------------------------------------------------------------
+                        // EPOCH TIMELINE SCHEDULE PARSER (1-SEC PRE-EXECUTION)
+                        // -------------------------------------------------------------
+                        if (typeof rawResult === 'string' && rawResult.startsWith("SCHED:")) {
+                            const schedData = JSON.parse(rawResult.replace("SCHED:", ""));
+                            executeTimelineUI(schedData);
+                            continue; // Keep listening for final result (success/error)
+                        }
+
+                        let code = rawResult, val = "";
                         if (rawResult.includes(':') && !rawResult.startsWith('{')) {
                             [code, val] = rawResult.split(':').map(s => s.trim());
-                        } else {
-                            try {
-                                const parsed = JSON.parse(rawResult);
-                                if (parsed?.code) { code = String(parsed.code); val = parsed.val ?? ""; }
-                            } catch(e) { code = String(rawResult).trim(); }
                         }
 
                         let translated = RESP_DICT[code] || rawResult;
@@ -412,19 +400,58 @@
                         const isErr = code.startsWith("4") || /ERROR|FAIL/i.test(translated);
                         setLog("> " + translated, isErr ? "error" : "normal");
                         
-                        if (code === "100" || isErr) break; 
+                        if (code === "100" || code === "204" || isErr) {
+                            setButtonsDisabled(false);
+                            break; 
+                        }
                     }
                 } catch (e) {}
 
                 if (!gotResponse && i >= maxChecks) {
                     setLog("> The device did not respond within 7 seconds. It may be offline.", "warn");
+                    setButtonsDisabled(false);
                     break;
                 }
             }
             state.isWaiting = false;
         }
 
-        // --- UI UPDATERS ---
+        // =================================================================================
+        // CHOREOGRAPHED TIMELINE EXECUTION ENGINE (EXACTLY 1 SEC FASTER THAN HARDWARE)
+        // =================================================================================
+        function executeTimelineUI(sched) {
+            clearTimelineTimers();
+            
+            const nowEpochMs = Date.now();
+            
+            // Calculate delay targets (Target Epoch - 1 Second - Current Epoch)
+            const delayF1  = Math.max(0, ((sched.t_f1 - 1) * 1000) - nowEpochMs);
+            const delayRem = Math.max(0, ((sched.t_rem - 1) * 1000) - nowEpochMs);
+            const delayF2  = Math.max(0, ((sched.t_f2 - 1) * 1000) - nowEpochMs);
+
+            setLog(`> Schedule received for ID #${sched.id}. Sequence starting...`, "normal");
+
+            // Prompt 1: Fires 1s BEFORE hardware window t_f1
+            state.activeTimers.push(setTimeout(() => {
+                setLog(`> [ID #${sched.id}] Place your finger on the sensor NOW`, "warn");
+            }, delayF1));
+
+            // Prompt Remove: Fires 1s BEFORE hardware pause window t_rem
+            state.activeTimers.push(setTimeout(() => {
+                setLog(`> [ID #${sched.id}] Remove your finger...`, "normal");
+            }, delayRem));
+
+            // Prompt 2: Fires 1s BEFORE hardware window t_f2
+            state.activeTimers.push(setTimeout(() => {
+                setLog(`> [ID #${sched.id}] Place the SAME finger again NOW`, "warn");
+            }, delayF2));
+        }
+
+        function clearTimelineTimers() {
+            state.activeTimers.forEach(t => clearTimeout(t));
+            state.activeTimers = [];
+        }
+
         function updateDisplay(status) {
             el.circle.className = "status-circle";
             el.notice.style.display = "none";
