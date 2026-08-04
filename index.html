@@ -408,7 +408,7 @@
                             const isErr = code.startsWith("4") || /ERROR|FAIL/i.test(translated);
                             setLog("> " + translated, isErr ? "error" : "normal");
                             
-                            if (code !== "200") {
+                            if (code === "200") {
                                 break; 
                             }
                         }
