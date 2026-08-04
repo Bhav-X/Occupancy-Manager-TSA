@@ -248,8 +248,9 @@
                     state.staleCount = 0; 
                 }
 
-                if (state.staleCount >= 15) {
-                    handleOffline("The room monitoring system is currently starting up or unreachable. Please check back in a moment.");
+                // --- KILL SWITCH FIX 4: If ESP32 actively reports OFFLINE, instantly trigger the inactive UI bypass timeout ---
+                if (state.staleCount >= 15 || currentStatus === "OFFLINE") {
+                    handleOffline("The room monitoring system is currently in Maintenance Mode (Kill Switch Active) or unreachable.");
                     return; 
                 }
 
@@ -323,7 +324,10 @@
 
             try {
                 const preRes = await fetch(`${RENDER_URL}/api/result`, { headers: { "Authorization": `Bearer ${key}` } });
-                if (preRes.ok) state.lastResult = (await preRes.json()).result || "";
+                if (preRes.ok) {
+                    const d = await preRes.json();
+                    state.lastResult = d.result != null ? String(d.result) : ""; 
+                }
 
                 const res = await fetch(`${RENDER_URL}/api/command`, {
                     method: "POST",
@@ -335,7 +339,7 @@
                 if (res.status === 429) throw new Error("RATE");
                 if (!res.ok) throw new Error("NET");
 
-                await waitForESPResponse(timeoutMs, key);
+                await waitForESPResponse(timeoutMs, key, cmdCode);
             } catch (err) {
                 if (err.message === "AUTH") { shakeInput("adminKey"); setLog("> Access Denied. Wrong admin key.", "error"); }
                 else if (err.message === "RATE") setLog("> Too many requests. Please wait a moment.", "warn");
@@ -361,87 +365,89 @@
             runCmd("DELETE_ALL");
         }
 
-        async function waitForESPResponse(timeoutMs, key) {
+        async function waitForESPResponse(timeoutMs, key, sentCmdCode) {
             state.isWaiting = true;
             let gotResponse = false;
-            const maxChecks = 14; 
-            const loops = Math.floor(timeoutMs / 500);
+            const maxChecks = Math.floor(timeoutMs / 500);
 
-            for (let i = 0; i < loops; i++) {
-                await new Promise(r => setTimeout(r, 500)); 
+            try {
+                for (let i = 0; i < maxChecks; i++) {
+                    await new Promise(r => setTimeout(r, 500)); 
 
-                try {
-                    const res = await fetch(`${RENDER_URL}/api/result`, { headers: { "Authorization": `Bearer ${key}` } });
-                    if (!res.ok) continue;
+                    try {
+                        const res = await fetch(`${RENDER_URL}/api/result`, { headers: { "Authorization": `Bearer ${key}` } });
+                        if (!res.ok) continue;
 
-                    const rawResult = (await res.json()).result;
+                        const resData = await res.json();
+                        const rawResult = resData.result != null ? String(resData.result) : ""; 
 
-                    if (rawResult && rawResult !== state.lastResult) {
-                        state.lastResult = rawResult;
-                        gotResponse = true;
+                        const isDuplicateBypass = (rawResult === state.lastResult && rawResult !== "200" && rawResult !== "" && i >= 3);
 
-                        // -------------------------------------------------------------
-                        // EPOCH TIMELINE SCHEDULE PARSER (1-SEC PRE-EXECUTION)
-                        // -------------------------------------------------------------
-                        if (typeof rawResult === 'string' && rawResult.startsWith("SCHED:")) {
-                            const schedData = JSON.parse(rawResult.replace("SCHED:", ""));
-                            executeTimelineUI(schedData);
-                            continue; // Keep listening for final result (success/error)
+                        if (rawResult && (rawResult !== state.lastResult || isDuplicateBypass)) {
+                            state.lastResult = rawResult;
+                            gotResponse = true;
+
+                            if (rawResult.startsWith("SCHED:")) {
+                                const schedData = JSON.parse(rawResult.replace("SCHED:", ""));
+                                executeTimelineUI(schedData);
+                                continue; 
+                            }
+
+                            let code = rawResult, val = "";
+                            if (rawResult.includes(':') && !rawResult.startsWith('{')) {
+                                [code, val] = rawResult.split(':').map(s => s.trim());
+                            }
+
+                            let translated = RESP_DICT[code] || rawResult;
+                            
+                            if (typeof translated === 'string' && translated.includes("{val}")) {
+                                translated = translated.replace("{val}", val);
+                            }
+
+                            if (sentCmdCode === "101" && code === "100") {
+                                translated = "Room Status Toggled Successfully.";
+                            } else if (sentCmdCode === "106" && code === "100") {
+                                translated = "Device Rebooting...";
+                            }
+
+                            const isErr = code.startsWith("4") || /ERROR|FAIL/i.test(translated);
+                            setLog("> " + translated, isErr ? "error" : "normal");
+                            
+                            if (code !== "200") {
+                                break; 
+                            }
                         }
-
-                        let code = rawResult, val = "";
-                        if (rawResult.includes(':') && !rawResult.startsWith('{')) {
-                            [code, val] = rawResult.split(':').map(s => s.trim());
-                        }
-
-                        let translated = RESP_DICT[code] || rawResult;
-                        if (translated.includes("{val}")) translated = translated.replace("{val}", val);
-                        
-                        const isErr = code.startsWith("4") || /ERROR|FAIL/i.test(translated);
-                        setLog("> " + translated, isErr ? "error" : "normal");
-                        
-                        if (code === "100" || code === "204" || isErr) {
-                            setButtonsDisabled(false);
-                            break; 
-                        }
-                    }
-                } catch (e) {}
-
-                if (!gotResponse && i >= maxChecks) {
-                    setLog("> The device did not respond within 7 seconds. It may be offline.", "warn");
-                    setButtonsDisabled(false);
-                    break;
+                    } catch (e) {}
                 }
+
+                if (!gotResponse) {
+                    setLog("> The device did not respond in time. It may be offline.", "warn");
+                }
+            } finally {
+                state.isWaiting = false;
+                setButtonsDisabled(false);
             }
-            state.isWaiting = false;
         }
 
-        // =================================================================================
-        // CHOREOGRAPHED TIMELINE EXECUTION ENGINE (EXACTLY 1 SEC FASTER THAN HARDWARE)
-        // =================================================================================
         function executeTimelineUI(sched) {
             clearTimelineTimers();
             
             const nowEpochMs = Date.now();
             
-            // Calculate delay targets (Target Epoch - 1 Second - Current Epoch)
             const delayF1  = Math.max(0, ((sched.t_f1 - 1) * 1000) - nowEpochMs);
             const delayRem = Math.max(0, ((sched.t_rem - 1) * 1000) - nowEpochMs);
             const delayF2  = Math.max(0, ((sched.t_f2 - 1) * 1000) - nowEpochMs);
 
             setLog(`> Schedule received for ID #${sched.id}. Sequence starting...`, "normal");
 
-            // Prompt 1: Fires 1s BEFORE hardware window t_f1
             state.activeTimers.push(setTimeout(() => {
                 setLog(`> [ID #${sched.id}] Place your finger on the sensor NOW`, "warn");
             }, delayF1));
 
-            // Prompt Remove: Fires 1s BEFORE hardware pause window t_rem
             state.activeTimers.push(setTimeout(() => {
                 setLog(`> [ID #${sched.id}] Remove your finger...`, "normal");
             }, delayRem));
 
-            // Prompt 2: Fires 1s BEFORE hardware window t_f2
             state.activeTimers.push(setTimeout(() => {
                 setLog(`> [ID #${sched.id}] Place the SAME finger again NOW`, "warn");
             }, delayF2));
