@@ -248,8 +248,9 @@
                     state.staleCount = 0; 
                 }
 
-                if (state.staleCount >= 15) {
-                    handleOffline("The room monitoring system is currently starting up or unreachable. Please check back in a moment.");
+                // --- KILL SWITCH FIX 4: If ESP32 actively reports OFFLINE, instantly trigger the inactive UI bypass timeout ---
+                if (state.staleCount >= 15 || currentStatus === "OFFLINE") {
+                    handleOffline("The room monitoring system is currently in Maintenance Mode (Kill Switch Active) or unreachable.");
                     return; 
                 }
 
@@ -338,7 +339,6 @@
                 if (res.status === 429) throw new Error("RATE");
                 if (!res.ok) throw new Error("NET");
 
-                // Passed cmdCode into the wait function so we can override generic logs
                 await waitForESPResponse(timeoutMs, key, cmdCode);
             } catch (err) {
                 if (err.message === "AUTH") { shakeInput("adminKey"); setLog("> Access Denied. Wrong admin key.", "error"); }
@@ -365,7 +365,6 @@
             runCmd("DELETE_ALL");
         }
 
-        // Added sentCmdCode to track what action was just requested
         async function waitForESPResponse(timeoutMs, key, sentCmdCode) {
             state.isWaiting = true;
             let gotResponse = false;
@@ -382,8 +381,6 @@
                         const resData = await res.json();
                         const rawResult = resData.result != null ? String(resData.result) : ""; 
 
-                        // UNIVERSAL BYPASS: After 1.5s (i >= 3), ANY terminal response is allowed 
-                        // to trigger a UI update, even if it's identical to the previous result.
                         const isDuplicateBypass = (rawResult === state.lastResult && rawResult !== "200" && rawResult !== "" && i >= 3);
 
                         if (rawResult && (rawResult !== state.lastResult || isDuplicateBypass)) {
@@ -407,9 +404,6 @@
                                 translated = translated.replace("{val}", val);
                             }
 
-                            // --- INTERCEPT GENERIC 100 CODES ---
-                            // If ESP sends "100" (System Ready) but we know we just sent a toggle or reboot command,
-                            // we dynamically override the text here so the UI shows an actual confirmation log.
                             if (sentCmdCode === "101" && code === "100") {
                                 translated = "Room Status Toggled Successfully.";
                             } else if (sentCmdCode === "106" && code === "100") {
