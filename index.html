@@ -323,10 +323,7 @@
 
             try {
                 const preRes = await fetch(`${RENDER_URL}/api/result`, { headers: { "Authorization": `Bearer ${key}` } });
-                if (preRes.ok) {
-                    const d = await preRes.json();
-                    state.lastResult = d.result != null ? String(d.result) : ""; // Cast to string to prevent crashes
-                }
+                if (preRes.ok) state.lastResult = (await preRes.json()).result || "";
 
                 const res = await fetch(`${RENDER_URL}/api/command`, {
                     method: "POST",
@@ -377,38 +374,32 @@
                         const res = await fetch(`${RENDER_URL}/api/result`, { headers: { "Authorization": `Bearer ${key}` } });
                         if (!res.ok) continue;
 
-                        const resData = await res.json();
-                        const rawResult = resData.result != null ? String(resData.result) : ""; // Cast string explicitly
+                        const rawResult = (await res.json()).result;
 
-                        // Fix: Allows the EXACT same check count string to process again after a 1.5s delay bypass
-                        const isIdenticalCheckCount = (rawResult === state.lastResult && rawResult.startsWith("301") && i >= 3);
-
-                        if (rawResult && (rawResult !== state.lastResult || isIdenticalCheckCount)) {
+                        if (rawResult && rawResult !== state.lastResult) {
                             state.lastResult = rawResult;
                             gotResponse = true;
 
-                            if (rawResult.startsWith("SCHED:")) {
+                            // Parse Schedule for Enroll timeline
+                            if (typeof rawResult === 'string' && rawResult.startsWith("SCHED:")) {
                                 const schedData = JSON.parse(rawResult.replace("SCHED:", ""));
                                 executeTimelineUI(schedData);
-                                continue; 
+                                continue; // Keep listening for final completion response
                             }
 
                             let code = rawResult, val = "";
-                            if (rawResult.includes(':') && !rawResult.startsWith('{')) {
+                            if (typeof rawResult === 'string' && rawResult.includes(':') && !rawResult.startsWith('{')) {
                                 [code, val] = rawResult.split(':').map(s => s.trim());
                             }
 
                             let translated = RESP_DICT[code] || rawResult;
-                            
-                            // Check typeof string so `.includes()` doesn't crash the entire JS thread
-                            if (typeof translated === 'string' && translated.includes("{val}")) {
-                                translated = translated.replace("{val}", val);
-                            }
+                            if (translated.includes("{val}")) translated = translated.replace("{val}", val);
                             
                             const isErr = code.startsWith("4") || /ERROR|FAIL/i.test(translated);
                             setLog("> " + translated, isErr ? "error" : "normal");
                             
-                            if (code === "200") {
+                            // Exit loop for any terminal response code (anything other than intermediate "200")
+                            if (code !== "200") {
                                 break; 
                             }
                         }
@@ -419,6 +410,7 @@
                     setLog("> The device did not respond in time. It may be offline.", "warn");
                 }
             } finally {
+                // ALWAYS guarantee buttons unlock and waiting state resets when function completes
                 state.isWaiting = false;
                 setButtonsDisabled(false);
             }
