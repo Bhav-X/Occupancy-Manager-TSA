@@ -323,7 +323,10 @@
 
             try {
                 const preRes = await fetch(`${RENDER_URL}/api/result`, { headers: { "Authorization": `Bearer ${key}` } });
-                if (preRes.ok) state.lastResult = (await preRes.json()).result || "";
+                if (preRes.ok) {
+                    const d = await preRes.json();
+                    state.lastResult = d.result != null ? String(d.result) : ""; 
+                }
 
                 const res = await fetch(`${RENDER_URL}/api/command`, {
                     method: "POST",
@@ -335,7 +338,8 @@
                 if (res.status === 429) throw new Error("RATE");
                 if (!res.ok) throw new Error("NET");
 
-                await waitForESPResponse(timeoutMs, key);
+                // Passed cmdCode into the wait function so we can override generic logs
+                await waitForESPResponse(timeoutMs, key, cmdCode);
             } catch (err) {
                 if (err.message === "AUTH") { shakeInput("adminKey"); setLog("> Access Denied. Wrong admin key.", "error"); }
                 else if (err.message === "RATE") setLog("> Too many requests. Please wait a moment.", "warn");
@@ -361,7 +365,8 @@
             runCmd("DELETE_ALL");
         }
 
-        async function waitForESPResponse(timeoutMs, key) {
+        // Added sentCmdCode to track what action was just requested
+        async function waitForESPResponse(timeoutMs, key, sentCmdCode) {
             state.isWaiting = true;
             let gotResponse = false;
             const maxChecks = Math.floor(timeoutMs / 500);
@@ -374,31 +379,46 @@
                         const res = await fetch(`${RENDER_URL}/api/result`, { headers: { "Authorization": `Bearer ${key}` } });
                         if (!res.ok) continue;
 
-                        const rawResult = (await res.json()).result;
+                        const resData = await res.json();
+                        const rawResult = resData.result != null ? String(resData.result) : ""; 
 
-                        if (rawResult && rawResult !== state.lastResult) {
+                        // UNIVERSAL BYPASS: After 1.5s (i >= 3), ANY terminal response is allowed 
+                        // to trigger a UI update, even if it's identical to the previous result.
+                        const isDuplicateBypass = (rawResult === state.lastResult && rawResult !== "200" && rawResult !== "" && i >= 3);
+
+                        if (rawResult && (rawResult !== state.lastResult || isDuplicateBypass)) {
                             state.lastResult = rawResult;
                             gotResponse = true;
 
-                            // Parse Schedule for Enroll timeline
-                            if (typeof rawResult === 'string' && rawResult.startsWith("SCHED:")) {
+                            if (rawResult.startsWith("SCHED:")) {
                                 const schedData = JSON.parse(rawResult.replace("SCHED:", ""));
                                 executeTimelineUI(schedData);
-                                continue; // Keep listening for final completion response
+                                continue; 
                             }
 
                             let code = rawResult, val = "";
-                            if (typeof rawResult === 'string' && rawResult.includes(':') && !rawResult.startsWith('{')) {
+                            if (rawResult.includes(':') && !rawResult.startsWith('{')) {
                                 [code, val] = rawResult.split(':').map(s => s.trim());
                             }
 
                             let translated = RESP_DICT[code] || rawResult;
-                            if (translated.includes("{val}")) translated = translated.replace("{val}", val);
                             
+                            if (typeof translated === 'string' && translated.includes("{val}")) {
+                                translated = translated.replace("{val}", val);
+                            }
+
+                            // --- INTERCEPT GENERIC 100 CODES ---
+                            // If ESP sends "100" (System Ready) but we know we just sent a toggle or reboot command,
+                            // we dynamically override the text here so the UI shows an actual confirmation log.
+                            if (sentCmdCode === "101" && code === "100") {
+                                translated = "Room Status Toggled Successfully.";
+                            } else if (sentCmdCode === "106" && code === "100") {
+                                translated = "Device Rebooting...";
+                            }
+
                             const isErr = code.startsWith("4") || /ERROR|FAIL/i.test(translated);
                             setLog("> " + translated, isErr ? "error" : "normal");
                             
-                            // Exit loop for any terminal response code (anything other than intermediate "200")
                             if (code !== "200") {
                                 break; 
                             }
@@ -410,7 +430,6 @@
                     setLog("> The device did not respond in time. It may be offline.", "warn");
                 }
             } finally {
-                // ALWAYS guarantee buttons unlock and waiting state resets when function completes
                 state.isWaiting = false;
                 setButtonsDisabled(false);
             }
