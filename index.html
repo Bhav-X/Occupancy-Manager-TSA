@@ -344,7 +344,6 @@
                 else if (err.message === "RATE") setLog("> Too many requests. Please wait a moment.", "warn");
                 else setLog("> Connection failed. Check your internet connection.", "error");
                 
-                // Force unfreeze on network error
                 state.isWaiting = false;
                 setButtonsDisabled(false);
             }
@@ -376,7 +375,6 @@
                 for (let i = 0; i < maxChecks; i++) {
                     await new Promise(r => setTimeout(r, 500)); 
 
-                    // Ensure slow connections don't freeze the loop permanently
                     const controller = new AbortController();
                     const fetchTimeout = setTimeout(() => controller.abort(), 2500);
 
@@ -409,6 +407,11 @@
                                 [code, val] = rawResult.split(':').map(s => s.trim());
                             }
 
+                            // --- THE FIX: Ignore background "System Ready" (100) if we are actively waiting for a hardware response ---
+                            if (code === "100" && (sentCmdCode === "102" || sentCmdCode === "103" || sentCmdCode === "104" || sentCmdCode === "105")) {
+                                continue; // Skip this loop iteration and keep waiting for the real answer!
+                            }
+
                             let translated = RESP_DICT[code] || rawResult;
                             
                             if (typeof translated === 'string' && translated.includes("{val}")) {
@@ -429,7 +432,6 @@
                             }
                         }
                     } catch (e) {
-                        // Connection hung or failed. Clear timeout and let loop continue securely.
                         clearTimeout(fetchTimeout);
                     }
                 }
@@ -438,7 +440,6 @@
                     setLog("> The device did not respond in time. It may be offline.", "warn");
                 }
             } finally {
-                // Guaranteed UI unlock
                 state.isWaiting = false;
                 setButtonsDisabled(false);
             }
