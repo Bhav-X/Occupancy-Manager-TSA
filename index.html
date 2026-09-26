@@ -256,7 +256,7 @@ async function pollPublicStatus() {
         }
         
         if (state.staleCount >= 15 || currentStatus === "OFFLINE") {
-            handleOffline("The room monitoring system is currently in Maintenance Mode (Kill Switch Active) or unreachable.");
+            handleOffline("The room monitoring system is currently unreachable, Please try again in a few moments");
             return;
         }
         
