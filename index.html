@@ -1,239 +1,205 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Room Monitor</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
-
-    <style>
-        :root {
-            --primary: #2563eb;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --success: #22c55e;
-            --offline: #4b5563;
-            --bg: #f3f4f6;
-            --card: #ffffff;
-            --text: #1f2937;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg);
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            color: var(--text);
-        }
-
-        header {
-            width: 100%;
-            background: var(--card);
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-sizing: border-box;
-        }
-        
-        h1 { margin: 0; font-size: 1.2rem; }
-
-        #admin-toggle {
-            background: none; border: none; font-size: 1.5rem; cursor: pointer; opacity: 0.5;
-        }
-
-        .status-container {
-            margin-top: 40px;
-            text-align: center;
-            width: 90%;
-            max-width: 400px;
-        }
-
-        .status-circle {
-            width: 200px; height: 200px;
-            border-radius: 50%;
-            margin: 0 auto 12px auto;
-            display: flex; align-items: center; justify-content: center;
-            color: white;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            transition: background 0.3s ease, box-shadow 0.3s ease;
-            cursor: default;
-            box-sizing: border-box;
-        }
-
-        .status-free    { background: var(--success); box-shadow: 0 0 30px rgba(34, 197, 94, 0.4); }
-        .status-busy    { background: var(--danger);  box-shadow: 0 0 30px rgba(239, 68, 68, 0.4); animation: pulse 2s infinite; }
-        .status-offline { background: var(--offline); box-shadow: none; opacity: 0.8; }
-        .status-loading { background: #9ca3af; }
-
-        @keyframes pulse {
-            0%   { transform: scale(1); }
-            50%  { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-
-        #busy-timer {
-            font-size: 0.75rem; font-weight: 400; color: #6b7280;
-            letter-spacing: 0.05em; margin-bottom: 6px; min-height: 18px;
-        }
-
-        .status-text { font-size: 1.5rem; font-weight: 700; margin-bottom: 5px; }
-        .sub-text    { color: #6b7280; font-size: 0.9rem; }
-        #heartbeat-debug { font-size: 0.7rem; color: #9ca3af; margin-top: 10px; min-height: 16px; }
-
-        #system-notice {
-            display: none;
-            background: #fff7ed; border: 1px solid #fed7aa;
-            border-radius: 10px; padding: 14px 18px;
-            margin-top: 20px; width: 90%; max-width: 400px;
-            box-sizing: border-box; text-align: center;
-        }
-        .notice-title { font-weight: 700; font-size: 0.95rem; color: #9a3412; margin-bottom: 6px; }
-        .notice-body  { font-size: 0.82rem; color: #7c2d12; line-height: 1.5; }
-
-        #admin-panel {
-            display: none; background: var(--card);
-            width: 90%; max-width: 400px; padding: 20px;
-            border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin: 30px 0 50px 0; box-sizing: border-box;
-        }
-
-        .admin-header { font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        
-        input { 
-            width: 100%; padding: 12px; margin-bottom: 10px; 
-            border: 1px solid #ddd; border-radius: 8px; 
-            box-sizing: border-box; font-family: inherit; 
-        }
-        input.input-error { border-color: var(--danger); }
-        
-        .grid-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-        .delete-group { display: flex; gap: 5px; margin-bottom: 10px; }
-        .delete-group input { margin-bottom: 0; width: 30%; }
-        .delete-group button { width: 70%; }
-        
-        button { 
-            padding: 12px; border: none; border-radius: 8px; 
-            font-weight: bold; cursor: pointer; color: white; 
-            transition: transform 0.1s; font-family: inherit; 
-        }
-        button:active   { transform: scale(0.98); }
-        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-
-        .btn-full   { width: 100%; margin-bottom: 10px; }
-        .btn-blue   { background-color: var(--primary); }
-        .btn-green  { background-color: var(--success); }
-        .btn-orange { background-color: var(--warning); color: black; }
-        .btn-red    { background-color: var(--danger); }
-        .btn-grey   { background-color: #6b7280; }
-
-        #console-log {
-            margin-top: 15px; background: #1e1e1e; color: #00ff00;
-            padding: 10px; border-radius: 5px; font-family: monospace;
-            font-size: 0.8rem; min-height: 40px; white-space: pre-wrap; word-break: break-word;
-        }
-        .log-error { color: #ff4444 !important; }
-        .log-warn  { color: #f59e0b !important; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Room Monitor</title>
+<link href="https://fonts.googleapis.com/css?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+--primary: #2563eb;
+--danger: #ef4444;
+--warning: #f59e0b;
+--success: #22c55e;
+--offline: #4b5563;
+--bg: #f3f4f6;
+--card: #ffffff;
+--text: #1f2937;
+}
+body {
+font-family: 'Inter', sans-serif;
+background-color: var(--bg);
+margin: 0;
+display: flex;
+flex-direction: column;
+align-items: center;
+min-height: 100vh;
+color: var(--text);
+}
+header {
+width: 100%;
+background: var(--card);
+padding: 20px;
+box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+display: flex;
+justify-content: space-between;
+align-items: center;
+box-sizing: border-box;
+}
+h1 { margin: 0; font-size: 1.2rem; }
+#admin-toggle {
+background: none; border: none; font-size: 1.5rem; cursor: pointer; opacity: 0.5;
+}
+.status-container {
+margin-top: 40px;
+text-align: center;
+width: 90%;
+max-width: 400px;
+}
+.status-circle {
+width: 200px; height: 200px;
+border-radius: 50%;
+margin: 0 auto 12px auto;
+display: flex; align-items: center; justify-content: center;
+color: white;
+box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+transition: background 0.3s ease, box-shadow 0.3s ease;
+cursor: default;
+box-sizing: border-box;
+}
+.status-free { background: var(--success); box-shadow: 0 0 30px rgba(34, 197, 94, 0.4); }
+.status-busy { background: var(--danger); box-shadow: 0 0 30px rgba(239, 68, 68, 0.4); animation: pulse 2s infinite; }
+.status-offline { background: var(--offline); box-shadow: none; opacity: 0.8; }
+.status-loading { background: #9ca3af; }
+@keyframes pulse {
+0% { transform: scale(1); }
+50% { transform: scale(1.05); }
+100% { transform: scale(1); }
+}
+#busy-timer {
+font-size: 0.75rem; font-weight: 400; color: #6b7280;
+letter-spacing: 0.05em; margin-bottom: 6px; min-height: 18px;
+}
+.status-text { font-size: 1.5rem; font-weight: 700; margin-bottom: 5px; }
+.sub-text { color: #6b7280; font-size: 0.9rem; }
+#heartbeat-debug { font-size: 0.7rem; color: #9ca3af; margin-top: 10px; min-height: 16px; }
+#system-notice {
+display: none;
+background: #fff7ed; border: 1px solid #fed7aa;
+border-radius: 10px; padding: 14px 18px;
+margin-top: 20px; width: 90%; max-width: 400px;
+box-sizing: border-box; text-align: center;
+}
+.notice-title { font-weight: 700; font-size: 0.95rem; color: #9a3412; margin-bottom: 6px; }
+.notice-body { font-size: 0.82rem; color: #7c2d12; line-height: 1.5; }
+#admin-panel {
+display: none; background: var(--card);
+width: 90%; max-width: 400px; padding: 20px;
+border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+margin: 30px 0 50px 0; box-sizing: border-box;
+}
+.admin-header { font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+input {
+width: 100%; padding: 12px; margin-bottom: 10px;
+border: 1px solid #ddd; border-radius: 8px;
+box-sizing: border-box; font-family: inherit;
+}
+input.input-error { border-color: var(--danger); }
+.grid-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.delete-group { display: flex; gap: 5px; margin-bottom: 10px; }
+.delete-group input { margin-bottom: 0; width: 30%; }
+.delete-group button { width: 70%; }
+button {
+padding: 12px; border: none; border-radius: 8px;
+font-weight: bold; cursor: pointer; color: white;
+transition: transform 0.1s; font-family: inherit;
+}
+button:active { transform: scale(0.98); }
+button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn-full { width: 100%; margin-bottom: 10px; }
+.btn-blue { background-color: var(--primary); }
+.btn-green { background-color: var(--success); }
+.btn-orange { background-color: var(--warning); color: black; }
+.btn-red { background-color: var(--danger); }
+.btn-grey { background-color: #6b7280; }
+#console-log {
+margin-top: 15px; background: #1e1e1e; color: #00ff00;
+padding: 10px; border-radius: 5px; font-family: monospace;
+font-size: 0.8rem; min-height: 40px; white-space: pre-wrap; word-break: break-word;
+}
+.log-error { color: #ff4444 !important; }
+.log-warn { color: #f59e0b !important; }
+</style>
 </head>
 <body>
-
-    <header>
-        <h1 id="header-title">Smart Room Monitor</h1>
-        <button id="admin-toggle" onclick="toggleAdmin()" aria-label="Toggle Admin Panel">🔒</button>
-    </header>
-
-    <main class="status-container">
-        <div id="status-indicator" class="status-circle status-loading">
-            <span id="status-word" style="font-size:2rem; font-weight:700;">...</span>
-        </div>
-        <div id="busy-timer"></div>
-        <div class="status-text" id="status-label">Please wait...</div>
-        <div class="sub-text" id="status-sub"></div>
-        <div id="heartbeat-debug"></div>
-    </main>
-
-    <div id="system-notice">
-        <div class="notice-title">⚠️ System Temporarily Unavailable</div>
-        <div class="notice-body" id="notice-body">
-            The room monitoring system is currently starting up or unreachable. Please check back in a moment.
-        </div>
-    </div>
-
-    <section id="admin-panel">
-        <div class="admin-header">Admin Controls</div>
-        <input type="password" id="adminKey" placeholder="Enter Admin Key">
-
-        <div class="grid-buttons">
-            <button class="btn-green" onclick="runCmd('STATUS_CHANGE')">Toggle Status</button>
-            <button class="btn-blue"  onclick="runCmd('ENROLL')">Enroll Finger</button>
-        </div>
-
-        <button class="btn-orange btn-full" onclick="runCmd('CHECK_COUNT')">Check Count</button>
-
-        <div class="delete-group">
-            <input type="number" id="deleteIdInput" placeholder="ID#" min="1">
-            <button class="btn-red" onclick="deleteSpecificId()">Delete ID</button>
-        </div>
-
-        <button class="btn-red btn-full" style="opacity: 0.8;" onclick="confirmDeleteAll()">⚠️ Delete All DB</button>
-        <button class="btn-grey btn-full" onclick="runCmd('REBOOT')">🔄 Reboot Device</button>
-
-        <div id="console-log">> System Ready.</div>
-    </section>
-
-    <script>
+<header>
+<h1 id="header-title">Smart Room Monitor</h1>
+<button id="admin-toggle" onclick="toggleAdmin()" aria-label="Toggle Admin Panel">⚙️</button>
+</header>
+<main class="status-container">
+<div id="status-indicator" class="status-circle status-loading">
+<span id="status-word" style="font-size:2rem; font-weight:700;">...</span>
+</div>
+<div id="busy-timer"></div>
+<div class="status-text" id="status-label">Please wait...</div>
+<div class="sub-text" id="status-sub"></div>
+<div id="heartbeat-debug"></div>
+</main>
+<div id="system-notice">
+<div class="notice-title">! System Temporarily Unavailable</div>
+<div class="notice-body" id="notice-body">
+The room monitoring system is currently starting up or unreachable. Please check back in a moment.
+</div>
+</div>
+<section id="admin-panel">
+<div class="admin-header">Admin Controls</div>
+<input type="password" id="adminKey" placeholder="Enter Admin Key">
+<div class="grid-buttons">
+<button class="btn-green" onclick="runCmd('STATUS_CHANGE')">Toggle Status</button>
+<button class="btn-blue" onclick="runCmd('ENROLL')">Enroll Finger</button>
+</div>
+<button class="btn-orange btn-full" onclick="runCmd('CHECK_COUNT')">Check Count</button>
+<div class="delete-group">
+<input type="number" id="deleteIdInput" placeholder="ID#" min="1">
+<button class="btn-red" onclick="deleteSpecificId()">Delete ID</button>
+</div>
+<button class="btn-red btn-full" style="opacity: 0.8;" onclick="confirmDeleteAll()"> Delete All DB</button>
+<button class="btn-grey btn-full" onclick="runCmd('REBOOT')"> Reboot Device</button>
+<div id="console-log">> System Ready.</div>
+</section>
+<script>
 const RENDER_URL = "https://occupancy-wall.onrender.com";
 const ROOM_NAME = "Smart Room Monitor";
-
 const CMD_DICT = {
-    CLEAR: "000", STATUS_CHANGE: "101", ENROLL: "102",
-    CHECK_COUNT: "103", DELETE_ID: "104", DELETE_ALL: "105", REBOOT: "106"
+CLEAR: "000", STATUS_CHANGE: "101", ENROLL: "102",
+CHECK_COUNT: "103", DELETE_ID: "104", DELETE_ALL: "105", REBOOT: "106"
 };
-
 const RESP_DICT = {
-    "100": "System Ready.",
-    "200": "Command accepted. Awaiting timeline schedule...",
-    "204": "Fingerprint stored successfully as ID #{val}!",
-    "205": "ID #{val} deleted successfully.",
-    "206": "All IDs cleared.",
-    "301": "Users enrolled: {val}",
-    "400": "Error: Process Failed",
-    "402": "Error: Bad read / imaging error",
-    "403": "Error: Fingerprints did not match",
-    "404": "Error: Sensor memory full"
+"100": "System Ready.",
+"200": "Command accepted. Awaiting timeline schedule...",
+"204": "Fingerprint stored successfully as ID #{val}!",
+"205": "ID #{val} deleted successfully.",
+"206": "All IDs cleared.",
+"301": "Users enrolled: {val}",
+"400": "Error: Process Failed",
+"402": "Error: Bad read / imaging error",
+"403": "Error: Fingerprints did not match",
+"404": "Error: Sensor memory full"
 };
 
 document.title = ROOM_NAME;
 document.getElementById("header-title").innerText = ROOM_NAME;
-
 const el = {
-    circle: document.getElementById("status-indicator"),
-    word: document.getElementById("status-word"),
-    timer: document.getElementById("busy-timer"),
-    label: document.getElementById("status-label"),
-    sub: document.getElementById("status-sub"),
-    debug: document.getElementById("heartbeat-debug"),
-    log: document.getElementById("console-log"),
-    notice: document.getElementById("system-notice"),
-    noticeBody: document.getElementById("notice-body"),
-    adminPanel: document.getElementById("admin-panel"),
-    adminKey: document.getElementById("adminKey"),
-    deleteId: document.getElementById("deleteIdInput")
+circle: document.getElementById("status-indicator"),
+word: document.getElementById("status-word"),
+timer: document.getElementById("busy-timer"),
+label: document.getElementById("status-label"),
+sub: document.getElementById("status-sub"),
+debug: document.getElementById("heartbeat-debug"),
+log: document.getElementById("console-log"),
+notice: document.getElementById("system-notice"),
+noticeBody: document.getElementById("notice-body"),
+adminPanel: document.getElementById("admin-panel"),
+adminKey: document.getElementById("adminKey"),
+deleteId: document.getElementById("deleteIdInput")
 };
-
 let state = {
-    lastResult: "", isWaiting: false, offlineStreak: 0,
-    busyStart: null, timerId: null, lastStatus: null,
-    firstPoll: true, staleCount: 0, prevBeat: -1, currBeat: -1,
-    activeTimers: []
+lastResult: "", isWaiting: false, offlineStreak: 0,
+busyStart: null, timerId: null, lastStatus: null,
+firstPoll: true, staleCount: 0, prevBeat: -1, currBeat: -1,
+activeTimers: [], logResetTimer: null
 };
 
-// Restore log from session storage on refresh (Fixes Bug 14)
 window.addEventListener('DOMContentLoaded', () => {
     const savedMsg = sessionStorage.getItem("saved_log_msg");
     const savedState = sessionStorage.getItem("saved_log_state");
@@ -245,24 +211,19 @@ async function pollPublicStatus() {
         const response = await fetch(`${RENDER_URL}/api/public-status`);
         if (!response.ok) throw new Error("Bad response");
         const data = await response.json();
-        
         const currentStatus = data.roomStatus || "UNKNOWN";
         state.currBeat = data.heartbeat || 0;
-        
         if (state.currBeat === state.prevBeat || state.currBeat === 0) {
             state.staleCount++;
         } else {
             state.staleCount = 0;
         }
-        
         if (state.staleCount >= 15 || currentStatus === "OFFLINE") {
-            handleOffline("The room monitoring system is currently unreachable, Please try again in a few moments");
+            handleOffline("The room monitoring system is currently unreachable. Please try again in a few moments");
             return;
         }
-        
         state.offlineStreak = 0;
         el.notice.style.display = "none";
-        
         if (state.firstPoll || currentStatus !== state.lastStatus) {
             state.lastStatus = currentStatus;
             state.firstPoll = false;
@@ -293,7 +254,6 @@ async function pollHeartbeat() {
 
 pollPublicStatus();
 pollHeartbeat();
-
 setInterval(() => { state.prevBeat = state.currBeat; }, 3000);
 setInterval(() => { fetch(`${RENDER_URL}/`).catch(() => {}); }, 600000);
 
@@ -311,7 +271,7 @@ function resetStateTimer() {
     state.busyStart = Date.now();
     state.timerId = setInterval(() => {
         const secs = Math.floor((Date.now() - state.busyStart) / 1000);
-        el.timer.innerText = `${String(Math.floor(secs/60)).padStart(2, "0")}:${String(secs % 60).padStart(2, "0")}`;
+        el.timer.innerText = `${String(Math.floor(secs / 60)).padStart(2, "0")}:${String(secs % 60).padStart(2, "0")}`;
     }, 1000);
 }
 
@@ -325,40 +285,27 @@ async function sendCommandAPI(cmdCode, extraPayload = {}, timeoutMs = 10000) {
     const key = el.adminKey.value.trim();
     if (!key) { shakeInput("adminKey"); setLog("> Please enter the admin key first.", "error"); return; }
     if (state.isWaiting) { setLog("> Please wait for the current action to finish.", "warn"); return; }
-    
-    // Fixes Bug 9: Reject command instantly if we know the ESP32 is offline
     if (state.staleCount >= 15 || state.lastStatus === "OFFLINE") {
-        setLog("> Cannot send command. Device is Offline.", "error");
-        return;
+        setLog("> Cannot send command. Device is Offline.", "error"); return;
     }
-
     setLog("> Sending command...", "normal");
     setButtonsDisabled(true);
-    
     try {
-        // Sync our local result memory so we don't trip over old data
         const preRes = await fetch(`${RENDER_URL}/api/result`, { headers: { "Authorization": `Bearer ${key}` } });
-        if (preRes.ok) {
-            const d = await preRes.json();
-            state.lastResult = ""; // Force reset because the backend will wipe it anyway
-        }
-        
+        if (preRes.ok) { state.lastResult = ""; }
         const res = await fetch(`${RENDER_URL}/api/command`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ cmd: cmdCode, key: key, ...extraPayload })
         });
-        
         if (res.status === 403) throw new Error("AUTH");
         if (res.status === 429) throw new Error("RATE");
         if (!res.ok) throw new Error("NET");
-        
         await waitForESPResponse(timeoutMs, key, cmdCode);
     } catch (err) {
         if (err.message === "AUTH") { shakeInput("adminKey"); setLog("> Access Denied. Wrong admin key.", "error"); }
         else if (err.message === "RATE") setLog("> Too many requests. Please wait a moment.", "warn");
         else setLog("> Connection failed. Check your internet connection.", "error");
-        
         state.isWaiting = false;
         setButtonsDisabled(false);
     }
@@ -381,37 +328,28 @@ function confirmDeleteAll() {
     runCmd("DELETE_ALL");
 }
 
-async function waitForESPResponse (timeoutMs, key, sentCmdCode) {
+async function waitForESPResponse(timeoutMs, key, sentCmdCode) {
     state.isWaiting = true;
     let gotResponse = false;
     const maxChecks = Math.floor(timeoutMs / 500);
-
     try {
-        // BUFFER FIX: Wait 1.5s before polling to ensure backend has wiped the old Firebase result 
-        // and the ESP32 has had time to process the physical hardware action.
-        await new Promise(r => setTimeout(r, 1500)); 
-
+        await new Promise(r => setTimeout(r, 1500));
         for (let i = 0; i < maxChecks; i++) {
             await new Promise(r => setTimeout(r, 500));
             const controller = new AbortController();
             const fetchTimeout = setTimeout(() => controller.abort(), 2500);
-            
             try {
                 const res = await fetch(`${RENDER_URL}/api/result`, {
                     headers: { "Authorization": `Bearer ${key}` },
                     signal: controller.signal
                 });
                 clearTimeout(fetchTimeout);
-                
                 if (!res.ok) continue;
-                
                 const resData = await res.json();
                 const rawResult = resData.result != null ? String(resData.result) : "";
                 
-                // Only act if the result is NOT empty and NOT our previous result
                 if (rawResult && rawResult !== state.lastResult) {
                     state.lastResult = rawResult;
-                    
                     if (rawResult.startsWith("SCHED:")) {
                         const schedData = JSON.parse(rawResult.replace("SCHED:", ""));
                         executeTimelineUI(schedData);
@@ -422,45 +360,49 @@ async function waitForESPResponse (timeoutMs, key, sentCmdCode) {
                     if (rawResult.includes(':') && !rawResult.startsWith('{')) {
                         [code, val] = rawResult.split(':').map(s => s.trim());
                     }
-
-                    // Fixes Bug 12: Escape the trap successfully when device acknowledges reboot
+                    
+                    // Bug 5 & 2 Fix: Handle Reboot Success and System Ready Timeout
                     if (code === "100" && sentCmdCode === "106") {
                         setLog("> Device Rebooting...", "warn");
                         gotResponse = true;
-                        break; 
+                        setTimeout(() => {
+                            setLog("> System Rebooted successfully.", "normal");
+                            clearTimeout(state.logResetTimer);
+                            state.logResetTimer = setTimeout(() => {
+                                if (!state.isWaiting) setLog("> System Ready.", "normal");
+                            }, 3500);
+                        }, 4000);
+                        break;
                     }
-
-                    // Ignore background "System Ready" (100) if we are actively waiting for a hardware response
-                    if (code === "100" && ["102", "103", "104", "105"].includes(sentCmdCode)) {
-                        continue;
-                    }
-
+                    
+                    if (code === "100" && ["102", "103", "104", "105"].includes(sentCmdCode)) continue;
+                    
                     let translated = RESP_DICT[code] || rawResult;
                     if (typeof translated === 'string' && translated.includes("{val}")) {
                         translated = translated.replace("{val}", val);
                     }
-
-                    if (sentCmdCode === "101" && code === "100") {
-                        translated = "Room Status Toggled Successfully.";
-                    }
-
+                    if (sentCmdCode === "101" && code === "100") translated = "Room Status Toggled Successfully.";
+                    
                     const isErr = code.startsWith("4") || /ERROR|FAIL/i.test(translated);
-                    setLog("> " + translated, isErr ? "error" : "normal");
+                    setLog(">" + translated, isErr ? "error" : "normal");
                     
                     if (code !== "200") {
                         gotResponse = true;
-                        break; 
+                        // Bug 2 Fix: Revert to System Ready after normal commands
+                        if (sentCmdCode !== "106") {
+                            clearTimeout(state.logResetTimer);
+                            state.logResetTimer = setTimeout(() => {
+                                if (!state.isWaiting) setLog("> System Ready.", "normal");
+                            }, 4000);
+                        }
+                        break;
                     }
                 }
             } catch (e) {
                 clearTimeout(fetchTimeout);
             }
         }
-        
-        // Fixes stuck "Sending Command..." UI (Bug 1)
-        if (!gotResponse) {
-            setLog("> Error: The device did not respond in time.", "error");
-        }
+        if (!gotResponse) setLog("> Error: The device did not respond in time.", "error");
     } finally {
         state.isWaiting = false;
         setButtonsDisabled(false);
@@ -470,24 +412,22 @@ async function waitForESPResponse (timeoutMs, key, sentCmdCode) {
 function executeTimelineUI(sched) {
     clearTimelineTimers();
     const nowEpochMs = Date.now();
-    
     const delayF1 = Math.max(0, ((sched.t_f1 - 1) * 1000) - nowEpochMs);
     const delayRem = Math.max(0, ((sched.t_rem - 1) * 1000) - nowEpochMs);
     const delayF2 = Math.max(0, ((sched.t_f2 - 1) * 1000) - nowEpochMs);
-    
     setLog(`> Schedule received for ID #${sched.id}. Sequence starting...`, "normal");
     
-    state.activeTimers.push(setTimeout(() => {
-        setLog(`> [ID #${sched.id}] Place your finger on the sensor NOW`, "warn");
-    }, delayF1));
+    state.activeTimers.push(setTimeout(() => { setLog(`> [ID #${sched.id}] Place your finger on the sensor NOW`, "warn"); }, delayF1));
+    state.activeTimers.push(setTimeout(() => { setLog(`> [ID #${sched.id}] Remove your finger...`, "normal"); }, delayRem));
+    state.activeTimers.push(setTimeout(() => { setLog(`> [ID #${sched.id}] Place the SAME finger again NOW`, "warn"); }, delayF2));
     
+    // Bug 2 Fix: Ensure "System ready" returns after enrollment concludes
     state.activeTimers.push(setTimeout(() => {
-        setLog(`> [ID #${sched.id}] Remove your finger...`, "normal");
-    }, delayRem));
-    
-    state.activeTimers.push(setTimeout(() => {
-        setLog(`> [ID #${sched.id}] Place the SAME finger again NOW`, "warn");
-    }, delayF2));
+        clearTimeout(state.logResetTimer);
+        state.logResetTimer = setTimeout(() => {
+            if (!state.isWaiting) setLog("> System Ready.", "normal");
+        }, 5000); 
+    }, delayF2 + 5000));
 }
 
 function clearTimelineTimers() {
@@ -498,15 +438,12 @@ function clearTimelineTimers() {
 function updateDisplay(status) {
     el.circle.className = "status-circle";
     el.notice.style.display = "none";
-    
     const styles = {
         FREE: { cls: "status-free", txt: "FREE", lbl: "Room is Available", sub: "Live Status", css: "font-size:2rem; font-weight:700;" },
         BUSY: { cls: "status-busy", txt: "BUSY", lbl: "Do Not Disturb", sub: "Live Status", css: "font-size:2rem; font-weight:700;" },
         OFFLINE: { cls: "status-offline", txt: "Inactive", lbl: "System Unavailable", sub: "", css: "font-size:1.4rem; font-weight:400; letter-spacing:0.04em; padding:0 20px;" }
     };
-    
     const cfg = styles[status] || { cls: "status-loading", txt: "...", lbl: "Please wait...", sub: "", css: "font-size:2rem; font-weight:700;" };
-    
     el.circle.classList.add(cfg.cls);
     el.word.innerText = cfg.txt;
     el.word.style.cssText = cfg.css;
@@ -514,15 +451,14 @@ function updateDisplay(status) {
     el.sub.innerText = cfg.sub;
 }
 
-function showNotice(msg) { 
-    el.noticeBody.innerText = msg; 
-    el.notice.style.display = "block"; 
+function showNotice(msg) {
+    el.noticeBody.innerText = msg;
+    el.notice.style.display = "block";
 }
 
 function setLog(msg, logState) {
     el.log.innerText = msg;
     el.log.className = logState === "error" ? "log-error" : (logState === "warn" ? "log-warn" : "");
-    // Fixes Bug 14: Save state to session storage to persist across refresh
     sessionStorage.setItem("saved_log_msg", msg);
     sessionStorage.setItem("saved_log_state", logState || "normal");
 }
