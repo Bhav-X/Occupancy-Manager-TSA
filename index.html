@@ -381,12 +381,16 @@ function confirmDeleteAll() {
     runCmd("DELETE_ALL");
 }
 
-async function waitForESPResponse(timeoutMs, key, sentCmdCode) {
+async function waitForESPResponse (timeoutMs, key, sentCmdCode) {
     state.isWaiting = true;
     let gotResponse = false;
     const maxChecks = Math.floor(timeoutMs / 500);
-    
+
     try {
+        // BUFFER FIX: Wait 1.5s before polling to ensure backend has wiped the old Firebase result 
+        // and the ESP32 has had time to process the physical hardware action.
+        await new Promise(r => setTimeout(r, 1500)); 
+
         for (let i = 0; i < maxChecks; i++) {
             await new Promise(r => setTimeout(r, 500));
             const controller = new AbortController();
