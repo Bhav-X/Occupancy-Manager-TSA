@@ -7,92 +7,92 @@
 <link href="https://fonts.googleapis.com/css?family=Inter:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root {
---primary: #2563eb;
---danger: #ef4444;
---warning: #f59e0b;
---success: #22c55e;
---offline: #4b5563;
---bg: #f3f4f6;
---card: #ffffff;
---text: #1f2937;
+  --primary: #2563eb;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --success: #22c55e;
+  --offline: #4b5563;
+  --bg: #f3f4f6;
+  --card: #ffffff;
+  --text: #1f2937;
 }
 body {
-font-family: 'Inter', sans-serif;
-background-color: var(--bg);
-margin: 0;
-display: flex;
-flex-direction: column;
-align-items: center;
-min-height: 100vh;
-color: var(--text);
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  color: var(--text);
 }
 header {
-width: 100%;
-background: var(--card);
-padding: 20px;
-box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-display: flex;
-justify-content: space-between;
-align-items: center;
-box-sizing: border-box;
+  width: 100%;
+  background: var(--card);
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-sizing: border-box;
 }
 h1 { margin: 0; font-size: 1.2rem; }
 #admin-toggle {
-background: none; border: none; font-size: 1.5rem; cursor: pointer; opacity: 0.5;
+  background: none; border: none; font-size: 1.5rem; cursor: pointer; opacity: 0.5;
 }
 .status-container {
-margin-top: 40px;
-text-align: center;
-width: 90%;
-max-width: 400px;
+  margin-top: 40px;
+  text-align: center;
+  width: 90%;
+  max-width: 400px;
 }
 .status-circle {
-width: 200px; height: 200px;
-border-radius: 50%;
-margin: 0 auto 12px auto;
-display: flex; align-items: center; justify-content: center;
-color: white;
-box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-transition: background 0.3s ease, box-shadow 0.3s ease;
-cursor: default;
-box-sizing: border-box;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  margin: 0 auto 12px auto;
+  display: flex; align-items: center; justify-content: center;
+  color: white;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+  cursor: default;
+  box-sizing: border-box;
 }
 .status-free { background: var(--success); box-shadow: 0 0 30px rgba(34, 197, 94, 0.4); }
 .status-busy { background: var(--danger); box-shadow: 0 0 30px rgba(239, 68, 68, 0.4); animation: pulse 2s infinite; }
 .status-offline { background: var(--offline); box-shadow: none; opacity: 0.8; }
 .status-loading { background: #9ca3af; }
 @keyframes pulse {
-0% { transform: scale(1); }
-50% { transform: scale(1.05); }
-100% { transform: scale(1); }
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
 }
 #busy-timer {
-font-size: 0.75rem; font-weight: 400; color: #6b7280;
-letter-spacing: 0.05em; margin-bottom: 6px; min-height: 18px;
+  font-size: 0.75rem; font-weight: 400; color: #6b7280;
+  letter-spacing: 0.05em; margin-bottom: 6px; min-height: 18px;
 }
 .status-text { font-size: 1.5rem; font-weight: 700; margin-bottom: 5px; }
 .sub-text { color: #6b7280; font-size: 0.9rem; }
 #heartbeat-debug { font-size: 0.7rem; color: #9ca3af; margin-top: 10px; min-height: 16px; }
 #system-notice {
-display: none;
-background: #fff7ed; border: 1px solid #fed7aa;
-border-radius: 10px; padding: 14px 18px;
-margin-top: 20px; width: 90%; max-width: 400px;
-box-sizing: border-box; text-align: center;
+  display: none;
+  background: #fff7ed; border: 1px solid #fed7aa;
+  border-radius: 10px; padding: 14px 18px;
+  margin-top: 20px; width: 90%; max-width: 400px;
+  box-sizing: border-box; text-align: center;
 }
 .notice-title { font-weight: 700; font-size: 0.95rem; color: #9a3412; margin-bottom: 6px; }
 .notice-body { font-size: 0.82rem; color: #7c2d12; line-height: 1.5; }
 #admin-panel {
-display: none; background: var(--card);
-width: 90%; max-width: 400px; padding: 20px;
-border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-margin: 30px 0 50px 0; box-sizing: border-box;
+  display: none; background: var(--card);
+  width: 90%; max-width: 400px; padding: 20px;
+  border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  margin: 30px 0 50px 0; box-sizing: border-box;
 }
 .admin-header { font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
 input {
-width: 100%; padding: 12px; margin-bottom: 10px;
-border: 1px solid #ddd; border-radius: 8px;
-box-sizing: border-box; font-family: inherit;
+  width: 100%; padding: 12px; margin-bottom: 10px;
+  border: 1px solid #ddd; border-radius: 8px;
+  box-sizing: border-box; font-family: inherit;
 }
 input.input-error { border-color: var(--danger); }
 .grid-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
@@ -100,9 +100,9 @@ input.input-error { border-color: var(--danger); }
 .delete-group input { margin-bottom: 0; width: 30%; }
 .delete-group button { width: 70%; }
 button {
-padding: 12px; border: none; border-radius: 8px;
-font-weight: bold; cursor: pointer; color: white;
-transition: transform 0.1s; font-family: inherit;
+  padding: 12px; border: none; border-radius: 8px;
+  font-weight: bold; cursor: pointer; color: white;
+  transition: transform 0.1s; font-family: inherit;
 }
 button:active { transform: scale(0.98); }
 button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
@@ -113,9 +113,9 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 .btn-red { background-color: var(--danger); }
 .btn-grey { background-color: #6b7280; }
 #console-log {
-margin-top: 15px; background: #1e1e1e; color: #00ff00;
-padding: 10px; border-radius: 5px; font-family: monospace;
-font-size: 0.8rem; min-height: 40px; white-space: pre-wrap; word-break: break-word;
+  margin-top: 15px; background: #1e1e1e; color: #00ff00;
+  padding: 10px; border-radius: 5px; font-family: monospace;
+  font-size: 0.8rem; min-height: 40px; white-space: pre-wrap; word-break: break-word;
 }
 .log-error { color: #ff4444 !important; }
 .log-warn { color: #f59e0b !important; }
@@ -153,51 +153,51 @@ The room monitoring system is currently starting up or unreachable. Please check
 <input type="number" id="deleteIdInput" placeholder="ID#" min="1">
 <button class="btn-red" onclick="deleteSpecificId()">Delete ID</button>
 </div>
-<button class="btn-red btn-full" style="opacity: 0.8;" onclick="confirmDeleteAll()"> Delete All DB</button>
-<button class="btn-grey btn-full" onclick="runCmd('REBOOT')"> Reboot Device</button>
+<button class="btn-red btn-full" style="opacity: 0.8;" onclick="confirmDeleteAll()">Delete All DB</button>
+<button class="btn-grey btn-full" onclick="runCmd('REBOOT')">Reboot Device</button>
 <div id="console-log">> System Ready.</div>
 </section>
 <script>
 const RENDER_URL = "https://occupancy-wall.onrender.com";
 const ROOM_NAME = "Smart Room Monitor";
 const CMD_DICT = {
-CLEAR: "000", STATUS_CHANGE: "101", ENROLL: "102",
-CHECK_COUNT: "103", DELETE_ID: "104", DELETE_ALL: "105", REBOOT: "106"
+    CLEAR: "000", STATUS_CHANGE: "101", ENROLL: "102",
+    CHECK_COUNT: "103", DELETE_ID: "104", DELETE_ALL: "105", REBOOT: "106"
 };
 const RESP_DICT = {
-"100": "System Ready.",
-"200": "Command accepted. Awaiting timeline schedule...",
-"204": "Fingerprint stored successfully as ID #{val}!",
-"205": "ID #{val} deleted successfully.",
-"206": "All IDs cleared.",
-"301": "Users enrolled: {val}",
-"400": "Error: Process Failed",
-"402": "Error: Bad read / imaging error",
-"403": "Error: Fingerprints did not match",
-"404": "Error: Sensor memory full"
+    "100": "System Ready.",
+    "200": "Command accepted. Awaiting timeline schedule...",
+    "204": "Fingerprint stored successfully as ID #{val}!",
+    "205": "ID #{val} deleted successfully.",
+    "206": "All IDs cleared.",
+    "301": "Users enrolled: {val}",
+    "400": "Error: Process Failed",
+    "402": "Error: Bad read / imaging error",
+    "403": "Error: Fingerprints did not match",
+    "404": "Error: Sensor memory full"
 };
 
 document.title = ROOM_NAME;
 document.getElementById("header-title").innerText = ROOM_NAME;
 const el = {
-circle: document.getElementById("status-indicator"),
-word: document.getElementById("status-word"),
-timer: document.getElementById("busy-timer"),
-label: document.getElementById("status-label"),
-sub: document.getElementById("status-sub"),
-debug: document.getElementById("heartbeat-debug"),
-log: document.getElementById("console-log"),
-notice: document.getElementById("system-notice"),
-noticeBody: document.getElementById("notice-body"),
-adminPanel: document.getElementById("admin-panel"),
-adminKey: document.getElementById("adminKey"),
-deleteId: document.getElementById("deleteIdInput")
+    circle: document.getElementById("status-indicator"),
+    word: document.getElementById("status-word"),
+    timer: document.getElementById("busy-timer"),
+    label: document.getElementById("status-label"),
+    sub: document.getElementById("status-sub"),
+    debug: document.getElementById("heartbeat-debug"),
+    log: document.getElementById("console-log"),
+    notice: document.getElementById("system-notice"),
+    noticeBody: document.getElementById("notice-body"),
+    adminPanel: document.getElementById("admin-panel"),
+    adminKey: document.getElementById("adminKey"),
+    deleteId: document.getElementById("deleteIdInput")
 };
 let state = {
-lastResult: "", isWaiting: false, offlineStreak: 0,
-busyStart: null, timerId: null, lastStatus: null,
-firstPoll: true, staleCount: 0, prevBeat: -1, currBeat: -1,
-activeTimers: [], logResetTimer: null
+    lastResult: "", isWaiting: false, offlineStreak: 0,
+    busyStart: null, timerId: null, lastStatus: null,
+    firstPoll: true, staleCount: 0, prevBeat: -1, currBeat: -1,
+    activeTimers: [], logResetTimer: null
 };
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -213,17 +213,21 @@ async function pollPublicStatus() {
         const data = await response.json();
         const currentStatus = data.roomStatus || "UNKNOWN";
         state.currBeat = data.heartbeat || 0;
+        
         if (state.currBeat === state.prevBeat || state.currBeat === 0) {
             state.staleCount++;
         } else {
             state.staleCount = 0;
         }
+        
         if (state.staleCount >= 15 || currentStatus === "OFFLINE") {
             handleOffline("The room monitoring system is currently unreachable. Please try again in a few moments");
             return;
         }
+        
         state.offlineStreak = 0;
         el.notice.style.display = "none";
+        
         if (state.firstPoll || currentStatus !== state.lastStatus) {
             state.lastStatus = currentStatus;
             state.firstPoll = false;
@@ -288,24 +292,30 @@ async function sendCommandAPI(cmdCode, extraPayload = {}, timeoutMs = 10000) {
     if (state.staleCount >= 15 || state.lastStatus === "OFFLINE") {
         setLog("> Cannot send command. Device is Offline.", "error"); return;
     }
+    
     setLog("> Sending command...", "normal");
     setButtonsDisabled(true);
+    
     try {
         const preRes = await fetch(`${RENDER_URL}/api/result`, { headers: { "Authorization": `Bearer ${key}` } });
         if (preRes.ok) { state.lastResult = ""; }
+        
         const res = await fetch(`${RENDER_URL}/api/command`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ cmd: cmdCode, key: key, ...extraPayload })
         });
+        
         if (res.status === 403) throw new Error("AUTH");
         if (res.status === 429) throw new Error("RATE");
         if (!res.ok) throw new Error("NET");
+        
         await waitForESPResponse(timeoutMs, key, cmdCode);
     } catch (err) {
         if (err.message === "AUTH") { shakeInput("adminKey"); setLog("> Access Denied. Wrong admin key.", "error"); }
         else if (err.message === "RATE") setLog("> Too many requests. Please wait a moment.", "warn");
         else setLog("> Connection failed. Check your internet connection.", "error");
+        
         state.isWaiting = false;
         setButtonsDisabled(false);
     }
@@ -332,12 +342,15 @@ async function waitForESPResponse(timeoutMs, key, sentCmdCode) {
     state.isWaiting = true;
     let gotResponse = false;
     const maxChecks = Math.floor(timeoutMs / 500);
+    
     try {
         await new Promise(r => setTimeout(r, 1500));
+        
         for (let i = 0; i < maxChecks; i++) {
             await new Promise(r => setTimeout(r, 500));
             const controller = new AbortController();
             const fetchTimeout = setTimeout(() => controller.abort(), 2500);
+            
             try {
                 const res = await fetch(`${RENDER_URL}/api/result`, {
                     headers: { "Authorization": `Bearer ${key}` },
@@ -345,11 +358,13 @@ async function waitForESPResponse(timeoutMs, key, sentCmdCode) {
                 });
                 clearTimeout(fetchTimeout);
                 if (!res.ok) continue;
+                
                 const resData = await res.json();
                 const rawResult = resData.result != null ? String(resData.result) : "";
                 
                 if (rawResult && rawResult !== state.lastResult) {
                     state.lastResult = rawResult;
+                    
                     if (rawResult.startsWith("SCHED:")) {
                         const schedData = JSON.parse(rawResult.replace("SCHED:", ""));
                         executeTimelineUI(schedData);
@@ -415,6 +430,7 @@ function executeTimelineUI(sched) {
     const delayF1 = Math.max(0, ((sched.t_f1 - 1) * 1000) - nowEpochMs);
     const delayRem = Math.max(0, ((sched.t_rem - 1) * 1000) - nowEpochMs);
     const delayF2 = Math.max(0, ((sched.t_f2 - 1) * 1000) - nowEpochMs);
+    
     setLog(`> Schedule received for ID #${sched.id}. Sequence starting...`, "normal");
     
     state.activeTimers.push(setTimeout(() => { setLog(`> [ID #${sched.id}] Place your finger on the sensor NOW`, "warn"); }, delayF1));
